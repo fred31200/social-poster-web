@@ -45,12 +45,19 @@ async function load() {
     const kv = await getKvClient()
     const data = await kv.get(KV_KEY)
     _cache = (typeof data === 'string') ? JSON.parse(data) : (data || { ...EMPTY })
+  } else if (process.env.VERCEL) {
+    // On Vercel without KV configured — log a clear error and return empty data
+    console.error('[store] Vercel KV not detected. Env vars expected: KV_REST_API_URL+KV_REST_API_TOKEN (or KV_REDIS_*, STORAGE_*, REDIS_*, UPSTASH_*)')
+    throw new Error('Stockage non configuré : connecte Vercel KV au projet et redéploie. (env vars *_REST_API_URL et *_REST_API_TOKEN manquantes)')
   } else {
-    if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true })
-    if (!fs.existsSync(DATA_FILE)) _cache = { ...EMPTY }
-    else {
-      try { _cache = JSON.parse(fs.readFileSync(DATA_FILE, 'utf8')) }
-      catch { _cache = { ...EMPTY } }
+    try {
+      if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true })
+      if (!fs.existsSync(DATA_FILE)) _cache = { ...EMPTY }
+      else {
+        _cache = JSON.parse(fs.readFileSync(DATA_FILE, 'utf8'))
+      }
+    } catch {
+      _cache = { ...EMPTY }
     }
   }
   _cache.accounts     = _cache.accounts     || []
