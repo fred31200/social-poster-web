@@ -1,8 +1,9 @@
 'use client'
 import { useState, useRef, useEffect } from 'react'
-import { Image, Video, X, Send, CalendarClock, Loader2, AlertCircle, Square, RectangleVertical, RectangleHorizontal, Maximize } from 'lucide-react'
+import { Image, Video, X, Send, CalendarClock, Loader2, AlertCircle, Square, RectangleVertical, RectangleHorizontal, Maximize, Sparkles } from 'lucide-react'
 import { format, addMinutes } from 'date-fns'
 import { fr } from 'date-fns/locale'
+import AIModal from '@/components/AIModal'
 
 const IG_FORMATS = [
   { id: 'square', label: '1:1', desc: 'Carré (recadré)', icon: Square, w: 1080, h: 1080 },
@@ -31,6 +32,7 @@ export default function Composer({ accounts, addToast }) {
   const [scheduledAt, setScheduledAt] = useState('')
   const [publishing, setPublishing] = useState(false)
   const [results, setResults] = useState(null)
+  const [aiOpen, setAiOpen] = useState(false)
 
   const connectedPlatforms = [...new Set(accounts.map(a => a.platform))]
 
@@ -246,7 +248,14 @@ export default function Composer({ accounts, addToast }) {
             className="w-full bg-transparent px-4 md:px-5 py-3.5 md:py-4 text-[15px] md:text-sm text-warm-700 placeholder-warm-400 resize-none outline-none leading-relaxed"
           />
           <div className="flex items-center justify-between px-5 py-3 border-t border-warm-100">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setAiOpen(true)}
+                className="flex items-center gap-1.5 text-xs font-semibold text-sage-700 hover:text-sage-800 transition-colors"
+              >
+                <Sparkles size={14} /> Générer avec IA
+              </button>
+              <span className="text-warm-300">·</span>
               <button
                 onClick={handlePickMedia}
                 className="flex items-center gap-1.5 text-xs text-warm-500 hover:text-sage-600 transition-colors"
@@ -268,6 +277,16 @@ export default function Composer({ accounts, addToast }) {
             )}
           </div>
         </div>
+
+        {/* AI Modal */}
+        <AIModal
+          open={aiOpen}
+          onClose={() => setAiOpen(false)}
+          onInsert={(text) => setContent(text)}
+          platform={selectedPlatforms.length === 1 ? selectedPlatforms[0] : null}
+          currentText={content}
+        />
+
 
         {/* Media preview */}
         {mediaFiles.length > 0 && (
