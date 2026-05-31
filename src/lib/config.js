@@ -11,7 +11,11 @@ const DATA_DIR    = path.join(process.cwd(), '.data')
 const CONFIG_FILE = path.join(DATA_DIR, 'config.json')
 
 function ensureDir() {
-  if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true })
+  // Skip on Vercel (read-only filesystem, file storage isn't used in prod anyway)
+  if (process.env.VERCEL) return
+  try {
+    if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true })
+  } catch {}
 }
 
 const DEFAULT_CONFIG = {
