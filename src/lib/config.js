@@ -30,9 +30,16 @@ const DEFAULT_CONFIG = {
 }
 
 export function getConfig() {
-  ensureDir()
-  // Prefer env vars when present (production), fallback to JSON file (dev)
-  const fromFile = fs.existsSync(CONFIG_FILE) ? JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf8')) : {}
+  // Wrap everything defensively — config reads must never throw
+  let fromFile = {}
+  try {
+    ensureDir()
+    if (fs.existsSync(CONFIG_FILE)) {
+      fromFile = JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf8'))
+    }
+  } catch (e) {
+    console.error('[config] file read error (non-fatal):', e?.message)
+  }
   return {
     ...DEFAULT_CONFIG,
     ...fromFile,
