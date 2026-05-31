@@ -1,0 +1,60 @@
+/**
+ * Proxy pour télécharger des images Pollinations.ai via Vercel.
+ * Évite les soucis CORS / timeout côté navigateur.
+ *
+ * GET /api/ai/image/proxy?url=<URL Pollinations URL-encoded>
+ */
+
+export const maxDuration = 60
+
+const ALLOWED_HOST = 'image.pollinations.ai'
+
+export async function GET(req) {
+  try {
+    const { searchParams } = new URL(req.url)
+    const target = searchParams.get('url')
+    if (!target) {
+      return new Response('Missing url param', { status: 400 })
+    }
+
+    // Whitelist: only proxy to image.pollinations.ai
+    let targetUrl
+    try { targetUrl = new URL(target) } catch { return new Response('Invalid URL', { status: 400 }) }
+    if (targetUrl.host !== ALLOWED_HOST) {
+      return new Response('Host not allowed', { status: 403 })
+    }
+
+    // Fetch with 55s timeout (Vercel max is 60s)
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 55_000)
+
+    let r
+    try {
+      r = await fetch(target, {
+        signal: controller.signal,
+        headers: { 'User-Agent': 'SocialPosterBiz/1.0' },
+      })
+    } finally {
+      clearTimeout(timeout)
+    }
+
+    if (!r.ok) {
+      return new Response(`Upstream error ${r.status}`, { status: 502 })
+    }
+
+    // Stream the response back to the browser
+    const contentType = r.headers.get('content-type') || 'image/jpeg'
+    return new Response(r.body, {
+      status: 200,
+      headers: {
+        'Content-Type': contentType,
+        'Cache-Control': 'public, max-age=3600',
+      }
+    })
+  } catch (err) {
+    if (err.name === 'AbortError') {
+      return new Response('Pollinations timeout (>55s)', { status: 504 })
+    }
+    return new Response(err.message || 'Proxy error', { status: 500 })
+  }
+}

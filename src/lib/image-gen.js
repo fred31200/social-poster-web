@@ -54,6 +54,9 @@ export function generateImages({ prompt, aspectRatio = '1:1', count = 4, useStyl
       nologo: 'true',
       model: 'flux',
     })
-    return `${POLLINATIONS_BASE}${encodedPrompt}?${params}`
+    const pollinationsUrl = `${POLLINATIONS_BASE}${encodedPrompt}?${params}`
+    // Return a same-origin proxy URL — avoids browser CORS / timeout quirks
+    // The proxy fetches Pollinations server-side via Vercel and streams the bytes back
+    return `/api/ai/image/proxy?url=${encodeURIComponent(pollinationsUrl)}`
   })
 }
