@@ -22,10 +22,10 @@ const REFINE_ACTIONS = [
 ]
 
 const IMAGE_PRESETS = [
-  { id: 'ambiance',  label: 'Ambiance bien-être', icon: Leaf,    prompt: 'cosy zen massage room with warm candles, neutral tones, peaceful atmosphere' },
-  { id: 'concept',   label: 'Concept ayurvéda',    icon: Flower2, prompt: 'symbolic representation of the three doshas (vata pitta kapha), minimalist watercolor illustration on cream background' },
-  { id: 'epices',    label: 'Plantes & épices',    icon: Soup,    prompt: 'ayurvedic spices and herbs arranged on linen — turmeric, ginger, cardamom, cinnamon, sesame seeds' },
-  { id: 'massage',   label: 'Mains & huile',       icon: Heart,   prompt: 'close-up of hands gently massaging with warm sesame oil dripping, soft focus, calming atmosphere' },
+  { id: 'ambiance',  label: 'Ambiance bien-être', icon: Leaf,    prompt: 'Salle de massage zen et chaleureuse avec bougies allumées, tons neutres et boisés, atmosphère paisible' },
+  { id: 'concept',   label: 'Concept ayurvéda',    icon: Flower2, prompt: 'Illustration symbolique et minimaliste à l\'aquarelle des trois doshas (vata, pitta, kapha) sur fond crème' },
+  { id: 'epices',    label: 'Plantes & épices',    icon: Soup,    prompt: 'Épices ayurvédiques disposées sur du lin naturel — curcuma, gingembre, cardamome, cannelle, graines de sésame' },
+  { id: 'massage',   label: 'Mains & huile',       icon: Heart,   prompt: 'Gros plan de mains massant délicatement avec de l\'huile de sésame chaude qui coule, lumière douce' },
 ]
 
 const IMAGE_RATIOS = [
@@ -400,11 +400,11 @@ export default function AIModal({ open, onClose, onInsert, onAddImage, platform 
                         value={imgPrompt}
                         onChange={e => setImgPrompt(e.target.value)}
                         placeholder="ex: huile de massage dorée versée sur des galets de bois clair…"
-                        rows={2}
+                        rows={3}
                         className="w-full bg-warm-50 border border-warm-200 rounded-xl px-4 py-3 text-[15px] text-warm-700 placeholder-warm-400 outline-none focus:border-sage-500 transition-colors resize-none"
                       />
                       <p className="text-[10px] text-warm-400 mt-1.5">
-                        💡 Le style « ambiance bien-être » est ajouté automatiquement
+                        💡 Tu peux écrire en français — un style « ambiance bien-être » est ajouté automatiquement
                       </p>
                     </div>
 
