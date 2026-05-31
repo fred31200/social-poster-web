@@ -1,12 +1,13 @@
 /**
- * Auth middleware — runs on every request before reaching pages or API routes.
+ * Auth proxy (formerly middleware) — runs on every request before reaching pages or API routes.
+ *
+ * Renamed to proxy.js for Next.js 16 compliance (the middleware convention is deprecated).
  *
  * Strategy (Edge-friendly):
- *  - Public routes (login page, login API, static assets): pass through
+ *  - Public routes (login page, login API, cron endpoints, static assets): pass through
  *  - All other routes: require the `sp_auth` cookie to be present
  *  - The actual HMAC verification happens in API routes (lib/auth.js uses Node crypto/fs,
  *    which aren't available in Edge Runtime). API routes will return 401 on tampered tokens.
- *  - Pages without API data are empty shells → no information leak.
  */
 
 import { NextResponse } from 'next/server'
@@ -25,7 +26,7 @@ function isPublicPath(pathname) {
   return PUBLIC_PATHS.some(p => pathname === p || pathname.startsWith(p + '/'))
 }
 
-export function middleware(req) {
+export function proxy(req) {
   const { pathname } = req.nextUrl
 
   // Static assets (Next.js handles _next automatically but be explicit)
