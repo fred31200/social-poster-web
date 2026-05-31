@@ -6,8 +6,7 @@
 
 import { generateImages } from '@/lib/image-gen'
 
-export const maxDuration = 60
-
+// Sync function — just builds URLs, no fetch on server
 export async function POST(req) {
   try {
     const { prompt, aspectRatio = '1:1', count = 4 } = await req.json()
@@ -16,7 +15,7 @@ export async function POST(req) {
       return Response.json({ error: 'Décris l\'image que tu veux générer' }, { status: 400 })
     }
 
-    const urls = await generateImages({ prompt, aspectRatio, count })
+    const urls = generateImages({ prompt, aspectRatio, count })
     return Response.json({ success: true, urls })
   } catch (err) {
     console.error('[ai/image]', err)

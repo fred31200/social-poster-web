@@ -35,6 +35,50 @@ const IMAGE_RATIOS = [
   { id: '9:16', label: '9:16',   desc: 'Story / Reel',       icon: RectangleVertical },
 ]
 
+// ImageResult sub-component — handles per-image loading state since
+// Pollinations.ai generates server-side when the browser hits the URL
+function ImageResult({ url, idx, onSelect, adding, disabled }) {
+  const [loaded, setLoaded] = useState(false)
+  const [error, setError] = useState(false)
+  return (
+    <button
+      onClick={() => loaded && !error && onSelect(url, idx)}
+      disabled={disabled || !loaded || error}
+      className="relative aspect-square rounded-xl overflow-hidden border-2 border-warm-200 hover:border-sage-500 active:border-sage-600 transition-all group disabled:opacity-50 bg-warm-100"
+    >
+      {!loaded && !error && (
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-warm-100">
+          <Loader2 size={20} className="text-sage-600 animate-spin" />
+          <span className="text-[10px] text-warm-500">Génération…</span>
+        </div>
+      )}
+      {error && (
+        <div className="absolute inset-0 flex items-center justify-center bg-[#FBEEEA] p-2">
+          <span className="text-[10px] text-[#B07060] text-center">Échec, retente</span>
+        </div>
+      )}
+      <img
+        src={url}
+        alt={`Variation ${idx + 1}`}
+        className={`w-full h-full object-cover transition-opacity ${loaded ? 'opacity-100' : 'opacity-0'}`}
+        onLoad={() => setLoaded(true)}
+        onError={() => setError(true)}
+      />
+      {adding ? (
+        <div className="absolute inset-0 bg-warm-800/60 flex items-center justify-center">
+          <Loader2 size={24} className="text-white animate-spin" />
+        </div>
+      ) : loaded && !error && (
+        <div className="absolute inset-0 bg-sage-600/0 group-hover:bg-sage-600/20 transition-colors flex items-center justify-center">
+          <div className="bg-white text-sage-700 rounded-full p-2 opacity-0 group-hover:opacity-100 transition-opacity shadow-lg">
+            <Plus size={20} />
+          </div>
+        </div>
+      )}
+    </button>
+  )
+}
+
 export default function AIModal({ open, onClose, onInsert, onAddImage, platform = null, currentText = '' }) {
   // ── Tabs ──
   const [tab, setTab] = useState('text') // 'text' | 'image'
@@ -459,8 +503,7 @@ export default function AIModal({ open, onClose, onInsert, onAddImage, platform 
                 {imgLoading && (
                   <div className="flex flex-col items-center justify-center py-12 gap-3">
                     <Loader2 size={32} className="text-sage-600 animate-spin" />
-                    <p className="text-sm text-warm-500">Flux dessine 4 variations…</p>
-                    <p className="text-xs text-warm-400">~5-10 secondes</p>
+                    <p className="text-sm text-warm-500">Préparation…</p>
                   </div>
                 )}
 
@@ -469,31 +512,19 @@ export default function AIModal({ open, onClose, onInsert, onAddImage, platform 
                     <p className="text-xs text-warm-500 uppercase tracking-wider font-semibold mb-2">
                       Choisis l'image que tu veux utiliser
                     </p>
+                    <p className="text-[11px] text-warm-400 mb-2">
+                      ⏳ Chaque image prend 5-10 sec à charger
+                    </p>
                     <div className="grid grid-cols-2 gap-2">
                       {imgResults.map((url, i) => (
-                        <button
-                          key={i}
-                          onClick={() => handleAddImage(url, i)}
+                        <ImageResult
+                          key={url}
+                          url={url}
+                          idx={i}
+                          onSelect={handleAddImage}
+                          adding={addingImageIdx === i}
                           disabled={addingImageIdx !== null}
-                          className="relative aspect-square rounded-xl overflow-hidden border-2 border-warm-200 hover:border-sage-500 active:border-sage-600 transition-all group disabled:opacity-50"
-                        >
-                          <img
-                            src={url}
-                            alt={`Variation ${i+1}`}
-                            className="w-full h-full object-cover"
-                          />
-                          {addingImageIdx === i ? (
-                            <div className="absolute inset-0 bg-warm-800/60 flex items-center justify-center">
-                              <Loader2 size={24} className="text-white animate-spin" />
-                            </div>
-                          ) : (
-                            <div className="absolute inset-0 bg-sage-600/0 group-hover:bg-sage-600/20 transition-colors flex items-center justify-center">
-                              <div className="bg-white text-sage-700 rounded-full p-2 opacity-0 group-hover:opacity-100 transition-opacity shadow-lg">
-                                <Plus size={20} />
-                              </div>
-                            </div>
-                          )}
-                        </button>
+                        />
                       ))}
                     </div>
 
