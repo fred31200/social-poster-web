@@ -16,7 +16,7 @@ const PLATFORMS = [
       'Va sur developers.facebook.com et crée une App (type "Business")',
       'Active les produits "Facebook Login" et "Instagram Graph API"',
       'Dans Paramètres > Basique, copie l\'App ID et l\'App Secret',
-      'Dans Facebook Login > Paramètres, ajoute http://localhost:3000/api/oauth/callback comme URI de redirection valide',
+      'Dans Facebook Login > Paramètres, ajoute https://social-poster-web.vercel.app/api/oauth/callback comme URI de redirection valide',
     ],
   },
   {
@@ -45,7 +45,7 @@ const PLATFORMS = [
       'Va sur linkedin.com/developers et crée une app',
       'Active les produits "Share on LinkedIn" et "Sign In with LinkedIn"',
       'Copie le Client ID et le Client Secret',
-      'Dans Auth > Redirect URLs, ajoute http://localhost:3000/api/oauth/callback',
+      'Dans Auth > Redirect URLs, ajoute https://social-poster-web.vercel.app/api/oauth/callback',
     ],
   },
   {
@@ -60,7 +60,7 @@ const PLATFORMS = [
       'Va sur developers.tiktok.com et crée une app',
       'Active le produit "Content Posting API"',
       'Copie le Client Key et le Client Secret',
-      'Ajoute http://localhost:3000/api/oauth/callback comme Redirect URI',
+      'Ajoute https://social-poster-web.vercel.app/api/oauth/callback comme Redirect URI',
     ],
   },
   {
@@ -74,7 +74,7 @@ const PLATFORMS = [
     setupSteps: [
       'Va sur developers.facebook.com et crée une nouvelle App (type "Business")',
       'Ajoute le produit "Threads API" (Use Case Threads)',
-      'Dans Threads API > Configuration, ajoute http://localhost:3000/api/oauth/callback dans les Redirect Callback URLs',
+      'Dans Threads API > Configuration, ajoute https://social-poster-web.vercel.app/api/oauth/callback dans les Redirect Callback URLs',
       'Récupère le Threads App ID et Threads App Secret depuis Paramètres > Basique',
       'Pour le moment seuls les posts texte sont supportés (les médias requièrent une URL publique)',
     ],
@@ -376,7 +376,7 @@ export default function Accounts({ accounts, reloadAccounts, addToast, metaSessi
           <AlertCircle size={14} className="text-warm-500 mt-0.5 flex-shrink-0" />
           <div className="text-xs text-warm-400 space-y-1">
             <p className="font-medium text-warm-500">URI de redirection OAuth (à ajouter sur chaque portail)</p>
-            <code className="text-sage-600 select-all">http://localhost:3000/api/oauth/callback</code>
+            <code className="text-sage-600 select-all">https://social-poster-web.vercel.app/api/oauth/callback</code>
           </div>
         </div>
 
