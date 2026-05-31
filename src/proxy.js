@@ -33,6 +33,20 @@ export function proxy(req) {
   if (pathname.startsWith('/_next') || pathname.startsWith('/favicon')) return NextResponse.next()
   if (isPublicPath(pathname)) return NextResponse.next()
 
+  // Explicit cron path bypass — protected by CRON_SECRET in the route itself
+  if (pathname.startsWith('/api/cron/') || pathname === '/api/cron') {
+    return NextResponse.next()
+  }
+
+  // CRON_SECRET bearer bypass — allows Vercel Cron to call any API with the secret
+  const cronSecret = process.env.CRON_SECRET
+  if (cronSecret) {
+    const auth = req.headers.get('authorization') || ''
+    if (auth === `Bearer ${cronSecret}`) {
+      return NextResponse.next()
+    }
+  }
+
   const cookie = req.cookies.get(AUTH_COOKIE_NAME)
   if (cookie && cookie.value && cookie.value.length > 10) {
     // Cookie present → let request through. API routes still verify cryptographically.
@@ -54,7 +68,7 @@ export function proxy(req) {
 
 export const config = {
   matcher: [
-    // All routes except static files, favicon, and cron endpoints (cron auth via CRON_SECRET)
-    '/((?!_next/static|_next/image|favicon.ico|api/cron).*)',
+    // All routes except static files and favicon
+    '/((?!_next/static|_next/image|favicon.ico).*)',
   ],
 }
