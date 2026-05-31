@@ -45,6 +45,35 @@ export default function Composer({ accounts, addToast }) {
     setResults(null)
   }
 
+  // Helper: build an entry from a File object (used by picker AND by AI-generated images)
+  async function addFileAsEntry(file) {
+    if (mediaFiles.length >= 10) return null
+    const id = (crypto.randomUUID?.() || Date.now() + '-' + Math.random())
+    const isVideoFile = /^video\//.test(file.type) || /\.(mp4|mov|avi|webm)$/i.test(file.name)
+    const entry = {
+      id,
+      file,
+      name: file.name,
+      isVideo: isVideoFile,
+      previewUrl: !isVideoFile ? URL.createObjectURL(file) : null,
+    }
+    setMediaFiles(prev => [...prev, entry].slice(0, 10))
+
+    if (!isVideoFile) {
+      const m = await window.api.imageMetadata(file)
+      if (m.success) {
+        setMediaMeta(prev => ({ ...prev, [id]: { width: m.width, height: m.height, ratio: m.ratio } }))
+        let suggested = 'square'
+        if (m.ratio < 0.85)            suggested = 'portrait'
+        else if (m.ratio > 1.5)        suggested = 'landscape'
+        else if (m.ratio >= 0.95 && m.ratio <= 1.05) suggested = 'square'
+        else                           suggested = 'fit-square'
+        setIgFormats(prev => ({ ...prev, [id]: suggested }))
+      }
+    }
+    return entry
+  }
+
   // mediaFiles now holds entries: { id, file, name, isVideo, previewUrl }
   async function handlePickMedia() {
     if (!window.api) return
@@ -283,6 +312,7 @@ export default function Composer({ accounts, addToast }) {
           open={aiOpen}
           onClose={() => setAiOpen(false)}
           onInsert={(text) => setContent(text)}
+          onAddImage={(file) => addFileAsEntry(file)}
           platform={selectedPlatforms.length === 1 ? selectedPlatforms[0] : null}
           currentText={content}
         />
