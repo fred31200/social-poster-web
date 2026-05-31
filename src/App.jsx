@@ -5,7 +5,7 @@ import MobileHeader from './components/MobileHeader'
 import MobileDrawer from './components/MobileDrawer'
 import Composer from './screens/Composer'
 import Accounts from './screens/Accounts'
-import Queue from './screens/Queue'
+import Calendar from './screens/Calendar'
 import History from './screens/History'
 import Toast from './components/Toast'
 import { api } from './lib/api'
@@ -96,7 +96,7 @@ export default function App() {
         >
           {page === 'composer' && <Composer {...pageProps} />}
           {page === 'accounts' && <Accounts {...pageProps} />}
-          {page === 'queue' && <Queue {...pageProps} />}
+          {page === 'queue' && <Calendar {...pageProps} />}
           {page === 'history' && <History {...pageProps} />}
         </div>
       </main>
