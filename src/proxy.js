@@ -54,7 +54,7 @@ export function proxy(req) {
 
 export const config = {
   matcher: [
-    // All routes except static files and favicon
-    '/((?!_next/static|_next/image|favicon.ico).*)',
+    // All routes except static files, favicon, and cron endpoints (cron auth via CRON_SECRET)
+    '/((?!_next/static|_next/image|favicon.ico|api/cron).*)',
   ],
 }
