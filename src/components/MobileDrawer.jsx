@@ -1,6 +1,6 @@
 'use client'
 import { useEffect } from 'react'
-import { PenSquare, Clock, History, Users, X, Leaf, LogOut } from 'lucide-react'
+import { PenSquare, Clock, History, Users, X, Leaf, LogOut, MessageSquareReply } from 'lucide-react'
 
 async function handleLogout() {
   await fetch('/api/auth/logout', { method: 'POST' })
@@ -21,7 +21,8 @@ const PLATFORM_ICONS = {
 
 const NAV = [
   { id: 'composer', label: 'Composer', icon: PenSquare },
-  { id: 'queue', label: 'Planifiés', icon: Clock },
+  { id: 'replies', label: 'Réponses', icon: MessageSquareReply },
+  { id: 'queue', label: 'Calendrier', icon: Clock },
   { id: 'history', label: 'Historique', icon: History },
   { id: 'accounts', label: 'Comptes', icon: Users },
 ]

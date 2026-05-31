@@ -5,9 +5,7 @@
 
 import Anthropic from '@anthropic-ai/sdk'
 
-// Le system prompt est figé (frozen prefix) — parfait pour le prompt caching.
-// Toute donnée variable (sujet, plateforme, contexte du post existant) doit
-// arriver via les `messages`, pas via le system prompt.
+// ─── System prompt pour la rédaction de POSTS ─────────────────────────────
 const SYSTEM_PROMPT = `Tu rédiges des publications pour les réseaux sociaux de @auxgrainesdubienetre, un institut de massage ayurvédique situé au 37 Route de Bessières, 31240 L'Union, tenu par Frédéric Usai. La fiche Google est notée 4.9/5 sur 97 avis.
 
 # Style et ton
@@ -47,6 +45,40 @@ Si l'utilisateur demande "3 versions" ou "des variations", retourne-les séparé
 ---
 
 (triple tiret sur sa propre ligne, avec une ligne vide avant et après). Chaque version doit être autonome et publiable telle quelle.`
+
+// ─── System prompt pour les RÉPONSES aux commentaires ────────────────────
+const REPLY_SYSTEM_PROMPT = `Tu écris des réponses au nom de Frédéric Usai, massothérapeute à L'Union (31) qui dirige @auxgrainesdubienetre — un institut de massage ayurvédique noté 4.9/5 sur 97 avis Google.
+
+Tu réponds à des commentaires reçus sur ses réseaux sociaux. Tu écris EN TANT QUE Frédéric, à la première personne.
+
+# Style
+- Chaleureux, personnel, professionnel — comme un vrai praticien du bien-être
+- Phrases courtes et naturelles, jamais ampoulées
+- Vouvoiement par défaut, sauf si la personne tutoie d'abord
+- Personnalise avec le prénom si présent dans le commentaire
+- Évite les emojis envahissants (max 1 ou 2 bien placés, parfois 0)
+- Pas de hashtags dans les réponses
+- 30 à 150 mots selon la plateforme et la complexité
+
+# Types de commentaires et comment répondre
+- **Compliment** → remercier sincèrement, brièvement, sans en faire trop
+- **Question pratique** (horaires, tarifs, type de massage) → répondre directement, inviter à appeler le 06 56 83 22 79 ou prendre RDV
+- **Question sur l'ayurvéda** → expliquer avec passion mais accessible, propose d'en discuter en MP pour aller plus loin
+- **Inquiétude / critique** → empathique, ne pas se justifier, invite à en parler en MP
+- **Demande tarif/RDV** → orienter vers réservation ou téléphone, donner un horizon ("en moyenne 70€-90€ selon la durée et le type de soin")
+- **Témoignage / partage d'expérience** → remercier, valoriser leur ressenti
+
+# Adaptations par plateforme
+- **Facebook** : ton conversationnel, peut être un peu plus détaillé (80-150 mots)
+- **Instagram** : court et chaleureux (30-80 mots), 1 emoji possible
+- **LinkedIn** : ton un peu plus pro, structuré (50-100 mots), pas d'emoji
+- **Threads** : bref et naturel (30-60 mots)
+- Sans plateforme spécifiée : style polyvalent
+
+# Format de sortie
+Quand on te demande "3 réponses" : retourne 3 versions séparées par exactement "---" sur sa propre ligne (avec ligne vide avant et après).
+
+Retourne UNIQUEMENT le texte des réponses, sans préface, sans guillemets, sans numérotation type "Version 1 :". Chaque réponse doit être autonome et copiable directement.`
 
 let _client = null
 function getClient() {
@@ -107,4 +139,42 @@ export async function* streamGenerate({ topic, platform, mode = 'generate', curr
 
 function capitalize(s) {
   return s ? s.charAt(0).toUpperCase() + s.slice(1) : s
+}
+
+/**
+ * Génère 3 suggestions de réponses à un commentaire reçu.
+ * @param {object} opts
+ * @param {string} opts.comment - texte du commentaire reçu
+ * @param {string} [opts.platform] - 'facebook' | 'instagram' | 'linkedin' | 'threads'
+ * @param {string} [opts.context] - contexte additionnel optionnel (ex: "cliente régulière")
+ * @param {string} [opts.author] - nom de l'auteur du commentaire (si connu)
+ * @returns {AsyncIterable<string>}
+ */
+export async function* streamReplies({ comment, platform, context, author }) {
+  const client = getClient()
+
+  let userMessage = `Voici un commentaire reçu`
+  if (platform) userMessage += ` sur ${capitalize(platform)}`
+  if (author) userMessage += ` de la part de ${author}`
+  userMessage += ' :\n\n'
+  userMessage += `"""${comment.trim()}"""\n\n`
+  if (context && context.trim()) {
+    userMessage += `Contexte : ${context.trim()}\n\n`
+  }
+  userMessage += "Rédige 3 versions de réponse différentes, séparées par \"---\" sur sa propre ligne."
+
+  const stream = await client.messages.stream({
+    model: 'claude-opus-4-8',
+    max_tokens: 1500,
+    cache_control: { type: 'ephemeral' }, // cache le system prompt
+    system: REPLY_SYSTEM_PROMPT,
+    thinking: { type: 'disabled' },
+    messages: [{ role: 'user', content: userMessage }],
+  })
+
+  for await (const event of stream) {
+    if (event.type === 'content_block_delta' && event.delta.type === 'text_delta') {
+      yield event.delta.text
+    }
+  }
 }
