@@ -16,17 +16,19 @@ const KV_KEY = 'sp:db'
 const DATA_DIR  = path.join(process.cwd(), '.data')
 const DATA_FILE = path.join(DATA_DIR, 'social-poster-data.json')
 
-// Detect Vercel KV / Upstash Redis with various possible prefix conventions.
-// Vercel users can use a custom prefix like KV, KV_REDIS, STORAGE, REDIS, etc.
+// Detect a Redis connection URL from any common Vercel KV / Upstash prefix.
+// Works with both REST API tokens AND plain Redis URLs.
 function detectKvEnv() {
-  const candidates = ['KV', 'KV_REDIS', 'STORAGE', 'REDIS', 'UPSTASH']
-  for (const p of candidates) {
+  const prefixes = ['KV', 'KV_REDIS', 'STORAGE', 'REDIS', 'UPSTASH']
+  for (const p of prefixes) {
+    const url = process.env[`${p}_URL`]
     const restUrl = process.env[`${p}_REST_API_URL`]
     const restToken = process.env[`${p}_REST_API_TOKEN`]
-    if (restUrl && restToken) {
-      return { restUrl, restToken, url: process.env[`${p}_URL`] }
-    }
+    if (restUrl && restToken) return { mode: 'rest', restUrl, restToken, url }
+    if (url) return { mode: 'redis', url }
   }
+  // Generic single-var fallback
+  if (process.env.REDIS_URL) return { mode: 'redis', url: process.env.REDIS_URL }
   return null
 }
 const kvEnv = detectKvEnv()
@@ -67,12 +69,29 @@ async function load() {
   return _cache
 }
 
-// Lazy KV client built from any matching prefix
+// Lazy KV/Redis client. Tries REST API (Vercel KV / Upstash) first, falls back to ioredis.
 let _kvClient = null
 async function getKvClient() {
   if (_kvClient) return _kvClient
-  const { createClient } = await import('@vercel/kv')
-  _kvClient = createClient({ url: kvEnv.restUrl, token: kvEnv.restToken })
+  if (kvEnv.mode === 'rest') {
+    const { createClient } = await import('@vercel/kv')
+    const c = createClient({ url: kvEnv.restUrl, token: kvEnv.restToken })
+    _kvClient = {
+      get: async (k) => c.get(k),
+      set: async (k, v) => c.set(k, v),
+    }
+  } else {
+    // Plain Redis URL (works with Upstash / any Redis)
+    const { default: Redis } = await import('ioredis')
+    const redis = new Redis(kvEnv.url, { lazyConnect: true, maxRetriesPerRequest: 3 })
+    _kvClient = {
+      get: async (k) => {
+        const v = await redis.get(k)
+        return v ? JSON.parse(v) : null
+      },
+      set: async (k, v) => redis.set(k, JSON.stringify(v)),
+    }
+  }
   return _kvClient
 }
 
