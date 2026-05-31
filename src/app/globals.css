@@ -35,13 +35,24 @@
   --color-warm-800: #2C2620;
 }
 
+html {
+  color-scheme: light only;   /* Block iOS/Android dark mode override */
+  -webkit-text-size-adjust: 100%;
+}
+
 html, body {
-  background: #FAF7F2;
-  color: #3D352E;
+  background: #FAF7F2 !important;
+  color: #3D352E !important;
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   min-height: 100vh;
+}
+
+/* Force-disable dark mode on inputs/textarea (iOS Safari ignores color-scheme alone) */
+input, textarea, select, button {
+  color-scheme: light only;
+  -webkit-text-fill-color: inherit;
 }
 
 /* Soft natural scrollbars */
