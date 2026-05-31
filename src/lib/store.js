@@ -16,7 +16,8 @@ const KV_KEY = 'sp:db'
 const DATA_DIR  = path.join(process.cwd(), '.data')
 const DATA_FILE = path.join(DATA_DIR, 'social-poster-data.json')
 
-const useKV = !!process.env.KV_REST_API_URL
+// Detect Vercel KV / Upstash with either KV_* or STORAGE_* prefix
+const useKV = !!(process.env.KV_REST_API_URL || process.env.STORAGE_REST_API_URL)
 
 const EMPTY = { accounts: [], posts: [], post_results: [] }
 
@@ -28,6 +29,12 @@ const CACHE_MS = 100
 async function load() {
   if (_cache && Date.now() - _cacheTime < CACHE_MS) return _cache
   if (useKV) {
+    // Map STORAGE_* env vars to KV_* if needed (Vercel uses custom prefix)
+    if (process.env.STORAGE_REST_API_URL && !process.env.KV_REST_API_URL) {
+      process.env.KV_REST_API_URL = process.env.STORAGE_REST_API_URL
+      process.env.KV_REST_API_TOKEN = process.env.STORAGE_REST_API_TOKEN
+      process.env.KV_URL = process.env.STORAGE_URL
+    }
     const { kv } = await import('@vercel/kv')
     const data = await kv.get(KV_KEY)
     _cache = data || { ...EMPTY }
@@ -50,6 +57,12 @@ async function save(db) {
   _cache = db
   _cacheTime = Date.now()
   if (useKV) {
+    // Map STORAGE_* env vars to KV_* if needed (Vercel uses custom prefix)
+    if (process.env.STORAGE_REST_API_URL && !process.env.KV_REST_API_URL) {
+      process.env.KV_REST_API_URL = process.env.STORAGE_REST_API_URL
+      process.env.KV_REST_API_TOKEN = process.env.STORAGE_REST_API_TOKEN
+      process.env.KV_URL = process.env.STORAGE_URL
+    }
     const { kv } = await import('@vercel/kv')
     await kv.set(KV_KEY, db)
   } else {
