@@ -16,8 +16,21 @@ const KV_KEY = 'sp:db'
 const DATA_DIR  = path.join(process.cwd(), '.data')
 const DATA_FILE = path.join(DATA_DIR, 'social-poster-data.json')
 
-// Detect Vercel KV / Upstash with either KV_* or STORAGE_* prefix
-const useKV = !!(process.env.KV_REST_API_URL || process.env.STORAGE_REST_API_URL)
+// Detect Vercel KV / Upstash Redis with various possible prefix conventions.
+// Vercel users can use a custom prefix like KV, KV_REDIS, STORAGE, REDIS, etc.
+function detectKvEnv() {
+  const candidates = ['KV', 'KV_REDIS', 'STORAGE', 'REDIS', 'UPSTASH']
+  for (const p of candidates) {
+    const restUrl = process.env[`${p}_REST_API_URL`]
+    const restToken = process.env[`${p}_REST_API_TOKEN`]
+    if (restUrl && restToken) {
+      return { restUrl, restToken, url: process.env[`${p}_URL`] }
+    }
+  }
+  return null
+}
+const kvEnv = detectKvEnv()
+const useKV = !!kvEnv
 
 const EMPTY = { accounts: [], posts: [], post_results: [] }
 
@@ -29,15 +42,9 @@ const CACHE_MS = 100
 async function load() {
   if (_cache && Date.now() - _cacheTime < CACHE_MS) return _cache
   if (useKV) {
-    // Map STORAGE_* env vars to KV_* if needed (Vercel uses custom prefix)
-    if (process.env.STORAGE_REST_API_URL && !process.env.KV_REST_API_URL) {
-      process.env.KV_REST_API_URL = process.env.STORAGE_REST_API_URL
-      process.env.KV_REST_API_TOKEN = process.env.STORAGE_REST_API_TOKEN
-      process.env.KV_URL = process.env.STORAGE_URL
-    }
-    const { kv } = await import('@vercel/kv')
+    const kv = await getKvClient()
     const data = await kv.get(KV_KEY)
-    _cache = data || { ...EMPTY }
+    _cache = (typeof data === 'string') ? JSON.parse(data) : (data || { ...EMPTY })
   } else {
     if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true })
     if (!fs.existsSync(DATA_FILE)) _cache = { ...EMPTY }
@@ -53,17 +60,20 @@ async function load() {
   return _cache
 }
 
+// Lazy KV client built from any matching prefix
+let _kvClient = null
+async function getKvClient() {
+  if (_kvClient) return _kvClient
+  const { createClient } = await import('@vercel/kv')
+  _kvClient = createClient({ url: kvEnv.restUrl, token: kvEnv.restToken })
+  return _kvClient
+}
+
 async function save(db) {
   _cache = db
   _cacheTime = Date.now()
   if (useKV) {
-    // Map STORAGE_* env vars to KV_* if needed (Vercel uses custom prefix)
-    if (process.env.STORAGE_REST_API_URL && !process.env.KV_REST_API_URL) {
-      process.env.KV_REST_API_URL = process.env.STORAGE_REST_API_URL
-      process.env.KV_REST_API_TOKEN = process.env.STORAGE_REST_API_TOKEN
-      process.env.KV_URL = process.env.STORAGE_URL
-    }
-    const { kv } = await import('@vercel/kv')
+    const kv = await getKvClient()
     await kv.set(KV_KEY, db)
   } else {
     if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true })
