@@ -34,7 +34,7 @@ function detectKvEnv() {
 const kvEnv = detectKvEnv()
 const useKV = !!kvEnv
 
-const EMPTY = { accounts: [], posts: [], post_results: [] }
+const EMPTY = { accounts: [], posts: [], post_results: [], comments: [] }
 
 // ─── Internal cache to avoid hitting KV/disk for every operation in the same request
 let _cache = null
@@ -65,6 +65,7 @@ async function load() {
   _cache.accounts     = _cache.accounts     || []
   _cache.posts        = _cache.posts        || []
   _cache.post_results = _cache.post_results || []
+  _cache.comments     = _cache.comments     || []
   _cacheTime = Date.now()
   return _cache
 }
@@ -201,6 +202,67 @@ export async function savePostResult({ postId, platform, accountId, status, plat
 export async function getPostResults(postId) {
   const db = await load()
   return db.post_results.filter(r => r.post_id === postId)
+}
+
+// ─── Comments (Inbox semi-auto) ──
+export async function getComments({ status, limit = 200 } = {}) {
+  const db = await load()
+  let comments = [...db.comments]
+  if (status) comments = comments.filter(c => c.status === status)
+  // Newest first
+  comments.sort((a, b) => (b.created_at || 0) - (a.created_at || 0))
+  return comments.slice(0, limit)
+}
+
+export async function getPendingCommentsCount() {
+  const db = await load()
+  return db.comments.filter(c => c.status === 'pending').length
+}
+
+/**
+ * Crée OU met à jour un commentaire (upsert par externalId — l'ID natif Facebook).
+ * Si l'externalId existe déjà, ignore (on ne re-traite pas les commentaires connus).
+ * Sinon, crée avec status 'pending'.
+ * @returns {string|null} ID interne du nouveau commentaire, ou null s'il existait déjà
+ */
+export async function upsertComment(comment) {
+  const db = await load()
+  const existing = db.comments.find(c => c.external_id === comment.external_id)
+  if (existing) return null // already known — skip
+  const id = uuidv4()
+  db.comments.push({
+    id,
+    status: 'pending',
+    created_at: Math.floor(Date.now() / 1000),
+    ...comment,
+  })
+  await save(db)
+  return id
+}
+
+export async function updateComment(id, patch) {
+  const db = await load()
+  const c = db.comments.find(x => x.id === id)
+  if (!c) return false
+  Object.assign(c, patch, { updated_at: Math.floor(Date.now() / 1000) })
+  await save(db)
+  return true
+}
+
+export async function getComment(id) {
+  const db = await load()
+  return db.comments.find(c => c.id === id) || null
+}
+
+export async function getInboxLastPolledAt() {
+  const db = await load()
+  return db.inbox_last_polled_at || 0
+}
+
+export async function setInboxLastPolledAt(timestamp) {
+  const db = await load()
+  db.inbox_last_polled_at = timestamp
+  await save(db)
 }
 
 // For diagnostics

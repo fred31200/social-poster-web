@@ -8,6 +8,7 @@ import Accounts from './screens/Accounts'
 import Calendar from './screens/Calendar'
 import History from './screens/History'
 import Replies from './screens/Replies'
+import Inbox from './screens/Inbox'
 import Toast from './components/Toast'
 import { api } from './lib/api'
 
@@ -100,6 +101,7 @@ export default function App() {
           {page === 'queue' && <Calendar {...pageProps} />}
           {page === 'history' && <History {...pageProps} />}
           {page === 'replies' && <Replies {...pageProps} />}
+          {page === 'inbox' && <Inbox {...pageProps} />}
         </div>
       </main>
 

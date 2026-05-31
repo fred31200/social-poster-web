@@ -18,6 +18,7 @@ const PUBLIC_PATHS = [
   '/api/auth/setup',
   '/api/auth/status',
   '/api/health',
+  '/api/cron', // protected by CRON_SECRET env var instead of cookie
 ]
 
 function isPublicPath(pathname) {

@@ -3,6 +3,7 @@ import { Menu, Leaf } from 'lucide-react'
 
 const PAGE_TITLES = {
   composer: 'Composer',
+  inbox: 'Inbox',
   replies: 'Réponses',
   queue: 'Calendrier',
   history: 'Historique',

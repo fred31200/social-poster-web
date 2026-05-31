@@ -15,7 +15,8 @@ export function buildMetaOAuthURL({ clientId, redirectUri, state = 'meta' }) {
   const params = new URLSearchParams({
     client_id: clientId,
     redirect_uri: redirectUri,
-    scope: 'pages_show_list,pages_manage_posts,pages_read_engagement,instagram_content_publish,public_profile',
+    // pages_manage_engagement = répondre aux commentaires (semi-auto Inbox)
+    scope: 'pages_show_list,pages_manage_posts,pages_read_engagement,pages_manage_engagement,instagram_content_publish,public_profile',
     response_type: 'code',
     state,
     auth_type: 'rerequest',
@@ -90,6 +91,80 @@ export async function postToFacebook(account, content, mediaPaths = []) {
     attached_media: photoIds,
     access_token: token
   })
+  return r.data.id
+}
+
+// ─── Comments: récupération + réponse ─────────────────────────────────────
+
+/**
+ * Récupère les posts récents d'une Page (pour avoir le contexte).
+ */
+export async function fetchPagePosts(account, limit = 25) {
+  const { access_token: token, page_id: pageId } = account
+  const r = await axios.get(`${META_API}/${pageId}/posts`, {
+    params: { fields: 'id,message,created_time,permalink_url', limit, access_token: token }
+  })
+  return r.data.data || []
+}
+
+/**
+ * Récupère les commentaires d'un post Facebook.
+ * @param {string} sinceUnix - timestamp Unix, ne récupère que les commentaires depuis cette date (optionnel)
+ */
+export async function fetchPostComments(account, postId, sinceUnix = null) {
+  const { access_token: token } = account
+  const params = {
+    fields: 'id,from{id,name,picture},message,created_time,parent,user_likes,like_count',
+    order: 'reverse_chronological',
+    limit: 50,
+    access_token: token,
+  }
+  if (sinceUnix) params.since = sinceUnix
+  const r = await axios.get(`${META_API}/${postId}/comments`, { params })
+  return r.data.data || []
+}
+
+/**
+ * Récupère TOUS les commentaires sur les N derniers posts d'une Page.
+ * Retourne un tableau enrichi avec le contexte du post parent.
+ * @param {object} account - le compte Facebook
+ * @param {number} sinceUnix - ne récupère que les commentaires depuis ce timestamp
+ * @param {number} maxPosts - sur les N derniers posts (défaut 25)
+ */
+export async function fetchAllPageComments(account, sinceUnix = null, maxPosts = 25) {
+  const posts = await fetchPagePosts(account, maxPosts)
+  const allComments = []
+  // Process posts in parallel (Facebook API supports it well)
+  await Promise.all(posts.map(async (post) => {
+    try {
+      const comments = await fetchPostComments(account, post.id, sinceUnix)
+      for (const c of comments) {
+        // Skip comments by the Page itself (not really "user" comments)
+        if (c.from?.id === account.page_id) continue
+        allComments.push({
+          ...c,
+          post_id: post.id,
+          post_message: post.message,
+          post_url: post.permalink_url,
+        })
+      }
+    } catch (e) {
+      console.error('[meta comments]', post.id, e?.response?.data || e?.message)
+    }
+  }))
+  return allComments
+}
+
+/**
+ * Poste une réponse à un commentaire Facebook.
+ * Nécessite le scope pages_manage_engagement.
+ * @returns {string} ID du commentaire de réponse créé
+ */
+export async function postCommentReply(account, commentId, message) {
+  const { access_token: token } = account
+  const r = await axios.post(`${META_API}/${commentId}/comments`,
+    { message, access_token: token }
+  )
   return r.data.id
 }
 
