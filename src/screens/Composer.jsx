@@ -393,8 +393,13 @@ export default function Composer({ accounts, addToast }) {
                 value={scheduledAt}
                 min={minDateTime}
                 onChange={e => setScheduledAt(e.target.value)}
-                className="bg-cream border border-warm-200 rounded-xl px-4 py-2.5 text-sm text-warm-700 outline-none focus:border-sage-500 transition-colors"
+                className="datetime-input w-full md:w-auto bg-cream border border-warm-200 rounded-xl px-4 py-3 md:py-2.5 text-[15px] md:text-sm text-warm-700 font-medium outline-none focus:border-sage-500 transition-colors cursor-pointer"
               />
+              {scheduledAt && (
+                <p className="text-[11px] text-warm-500 mt-1.5">
+                  📅 Publication prévue {format(new Date(scheduledAt), 'EEEE d MMMM \'à\' HH:mm', { locale: fr })}
+                </p>
+              )}
             </div>
           )}
         </div>

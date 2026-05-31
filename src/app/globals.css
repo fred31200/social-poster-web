@@ -62,3 +62,38 @@ html, body {
 
 /* Selection */
 ::selection { background: rgba(212, 185, 120, 0.35); color: #3D352E; }
+
+/* Force visibility of native date/time inputs on iOS Safari + Chrome mobile */
+.datetime-input {
+  -webkit-text-fill-color: #3D352E; /* Safari: force text color */
+  color: #3D352E;
+  color-scheme: light;               /* Use light-theme native picker */
+  min-height: 48px;                  /* Touch target */
+  font-family: inherit;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+/* The visible text inside the input (date/time fields) */
+.datetime-input::-webkit-datetime-edit,
+.datetime-input::-webkit-datetime-edit-fields-wrapper,
+.datetime-input::-webkit-datetime-edit-text,
+.datetime-input::-webkit-datetime-edit-month-field,
+.datetime-input::-webkit-datetime-edit-day-field,
+.datetime-input::-webkit-datetime-edit-year-field,
+.datetime-input::-webkit-datetime-edit-hour-field,
+.datetime-input::-webkit-datetime-edit-minute-field {
+  color: #3D352E;
+  -webkit-text-fill-color: #3D352E;
+  font-weight: 500;
+}
+
+/* The calendar icon at the right */
+.datetime-input::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  opacity: 0.7;
+  filter: invert(35%) sepia(15%) saturate(500%) hue-rotate(330deg);  /* tint to warm-700 */
+}
+.datetime-input::-webkit-calendar-picker-indicator:hover {
+  opacity: 1;
+}
