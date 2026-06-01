@@ -12,20 +12,20 @@ const PLATFORMS = [
 
 const EXAMPLE_COMMENTS = [
   {
-    label: '💚 Compliment',
-    text: 'Merci Frédéric pour ce moment de pure détente, je me sens revivre ! Je reviens dès le mois prochain 🙏',
+    label: '💚 Gratitude',
+    text: 'Merci pour ce moment hors du temps, je me sens vraiment réalignée et apaisée 🙏 Hâte de revenir !',
   },
   {
-    label: '❓ Question tarif',
-    text: 'Bonjour, je voudrais savoir combien coûte une séance de shirodhara et si vous proposez des cartes cadeaux ? Merci',
+    label: '❓ Question pratique',
+    text: 'Bonjour, je voudrais savoir comment se déroule une première séance et combien de temps ça dure ? Merci !',
   },
   {
-    label: '🤔 Question ayurvéda',
-    text: 'C\'est quoi exactement la différence entre un massage suédois classique et l\'abhyanga ? Je suis curieuse !',
+    label: '🔮 Question spirituelle',
+    text: 'C\'est quoi exactement le travail sur les chakras ? Je débute dans tout ça et je suis curieuse de comprendre',
   },
   {
-    label: '😟 Inquiétude',
-    text: 'J\'ai des problèmes de dos chronique, est-ce que vos massages peuvent vraiment m\'aider ou c\'est juste de la détente ?',
+    label: '😟 Doute',
+    text: 'Je traverse une période vraiment difficile en ce moment… est-ce que ce genre de pratique peut vraiment aider ou c\'est juste de la relaxation ?',
   },
 ]
 

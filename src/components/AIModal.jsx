@@ -6,11 +6,12 @@ import {
 } from 'lucide-react'
 
 const QUICK_TOPICS = [
-  'Les bienfaits du massage abhyanga pour le stress',
-  'Comprendre son dosha (vata, pitta, kapha)',
-  'Comment préparer son corps à l\'hiver en ayurvéda',
-  'L\'importance du shirodhara pour le sommeil',
-  '5 conseils pour intégrer l\'ayurvéda dans son quotidien',
+  'Une intention pour la nouvelle lune',
+  'Comment s\'ancrer quand le mental s\'emballe',
+  'Le rituel du matin pour aligner corps et esprit',
+  'Lâcher-prise : ce que ça veut vraiment dire',
+  'Se reconnecter à son énergie au changement de saison',
+  'Méditation : 3 minutes pour revenir à soi',
 ]
 
 const REFINE_ACTIONS = [
@@ -22,10 +23,10 @@ const REFINE_ACTIONS = [
 ]
 
 const IMAGE_PRESETS = [
-  { id: 'ambiance',  label: 'Ambiance bien-être', icon: Leaf,    prompt: 'Salle de massage zen et chaleureuse avec bougies allumées, tons neutres et boisés, atmosphère paisible' },
-  { id: 'concept',   label: 'Concept ayurvéda',    icon: Flower2, prompt: 'Illustration symbolique et minimaliste à l\'aquarelle des trois doshas (vata, pitta, kapha) sur fond crème' },
-  { id: 'epices',    label: 'Plantes & épices',    icon: Soup,    prompt: 'Épices ayurvédiques disposées sur du lin naturel — curcuma, gingembre, cardamome, cannelle, graines de sésame' },
-  { id: 'massage',   label: 'Mains & huile',       icon: Heart,   prompt: 'Gros plan de mains massant délicatement avec de l\'huile de sésame chaude qui coule, lumière douce' },
+  { id: 'ambiance',  label: 'Ambiance zen',       icon: Leaf,    prompt: 'Espace de méditation paisible avec bougies, encens qui fume doucement, coussins, tons neutres et boisés, lumière dorée du matin' },
+  { id: 'cosmique',  label: 'Spirituel / cosmos', icon: Flower2, prompt: 'Illustration spirituelle onirique — phases de la lune, étoiles, mandala doré sur fond bleu nuit profond, aquarelle délicate' },
+  { id: 'nature',    label: 'Nature & éléments',  icon: Soup,    prompt: 'Nature apaisante au lever du soleil — forêt brumeuse, eau calme, pierres empilées en équilibre, lumière douce et spirituelle' },
+  { id: 'energie',   label: 'Énergie & soin',     icon: Heart,   prompt: 'Mains en geste de soin énergétique, lumière douce entre les paumes, cristaux et plantes, atmosphère sereine et lumineuse' },
 ]
 
 const IMAGE_RATIOS = [
