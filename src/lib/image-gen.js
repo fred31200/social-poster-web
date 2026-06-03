@@ -110,13 +110,17 @@ async function fromPexels({ keywords, dims, count, apiKey }) {
 
 /** LoremFlickr — photos Flickr CC par mots-clés, sans clé. */
 function fromLoremFlickr({ keywords, dims, count }) {
-  // /all = match n'importe quel tag (OR) → garantit un résultat.
-  // On ajoute l'ancre « wellness » pour rester dans le thème bien-être.
-  const tags = [...keywords, ANCHOR].join(',')
+  // Mode AND (toutes les tags doivent matcher) → photos PERTINENTES et variées
+  // selon le lock. Le mode /all (OR) donnait des photos aléatoires hors-sujet.
+  // On garde le mot-clé principal + une ancre large pour garantir des résultats
+  // tout en restant dans le thème bien-être.
+  const primary = keywords[0] || 'spa'
+  const secondary = primary === ANCHOR ? 'spa' : ANCHOR
+  const tags = `${primary},${secondary}`
   const base = Math.floor(Math.random() * 100000)
   return Array.from({ length: count }, (_, i) => {
     const lock = base + i // lock différent → image différente
-    return proxied(`https://loremflickr.com/${dims.width}/${dims.height}/${tags}/all?lock=${lock}`)
+    return proxied(`https://loremflickr.com/${dims.width}/${dims.height}/${tags}?lock=${lock}`)
   })
 }
 
