@@ -128,7 +128,7 @@ export default function AIModal({ open, onClose, onInsert, onAddImage, platform 
   const [textLoading, setTextLoading] = useState(false)
   const [textError, setTextError] = useState('')
   const [mode, setMode] = useState('generate')
-  const [quickTopics, setQuickTopics] = useState([]) // 6 idées tirées au hasard
+  const [quickTopics, setQuickTopics] = useState(() => pickRandom(QUICK_TOPICS_POOL, 6)) // 6 idées tirées au hasard
   const textAbortRef = useRef(null)
 
   // ── Image state ──
