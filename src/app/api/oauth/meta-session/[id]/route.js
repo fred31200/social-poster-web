@@ -1,14 +1,12 @@
-/**
- * Retrieves a pending Meta OAuth session (token + pages list) for the page-selection step.
- * Called by the frontend right after callback redirects with ?session=...
- */
-
 import { NextResponse } from 'next/server'
+import { requireAuth } from '@/lib/auth'
 import { getMetaSession } from '@/lib/oauth-session'
 
-export async function GET(_, { params }) {
+export async function GET(req, { params }) {
+  const auth = requireAuth(req)
+  if (auth instanceof NextResponse) return auth
   const { id } = await params
-  const session = getMetaSession(id)
+  const session = await getMetaSession(id)
   if (!session) return NextResponse.json({ error: 'Session expirée ou introuvable' }, { status: 404 })
   return NextResponse.json({
     success: true,
