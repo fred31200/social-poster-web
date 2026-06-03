@@ -11,6 +11,11 @@ const ALLOWED_HOSTS = new Set([
   'loremflickr.com',        // source par défaut (sans clé)
   'images.pexels.com',      // source Pexels (si PEXELS_API_KEY)
   'image.pollinations.ai',  // ancienne source (conservée par compat)
+  // Hôtes publics où l'on dépose les images générées par IA (img2img Gemini)
+  'files.catbox.moe',
+  '0x0.st',
+  'o.uguu.se',
+  'a.uguu.se',
 ])
 
 export async function GET(req) {

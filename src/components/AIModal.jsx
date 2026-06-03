@@ -99,6 +99,10 @@ export default function AIModal({ open, onClose, onInsert, onAddImage, platform 
   const [imgLoading, setImgLoading] = useState(false)
   const [imgError, setImgError] = useState('')
   const [addingImageIdx, setAddingImageIdx] = useState(null)
+  // Sous-mode de l'onglet Image : 'search' (photos stock) | 'edit' (img2img Gemini)
+  const [imgSource, setImgSource] = useState('search')
+  const [refImage, setRefImage] = useState(null) // { base64, mimeType, preview }
+  const refFileRef = useRef(null)
 
   // Reset when opening
   useEffect(() => {
@@ -111,6 +115,8 @@ export default function AIModal({ open, onClose, onInsert, onAddImage, platform 
       setImgResults([])
       setImgError('')
       setAddingImageIdx(null)
+      setImgSource('search')
+      setRefImage(null)
     } else if (textAbortRef.current) {
       textAbortRef.current.abort()
     }
@@ -200,13 +206,66 @@ export default function AIModal({ open, onClose, onInsert, onAddImage, platform 
     }
   }
 
+  // ── Image de référence (img2img) : lecture + redimensionnement ──
+  function handleRefFile(e) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setImgError('')
+    const reader = new FileReader()
+    reader.onload = () => {
+      const img = new window.Image()
+      img.onload = () => {
+        const MAX = 1024
+        let { width, height } = img
+        if (width > MAX || height > MAX) {
+          const s = MAX / Math.max(width, height)
+          width = Math.round(width * s); height = Math.round(height * s)
+        }
+        const canvas = document.createElement('canvas')
+        canvas.width = width; canvas.height = height
+        canvas.getContext('2d').drawImage(img, 0, 0, width, height)
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.9)
+        setRefImage({ base64: dataUrl.split(',')[1], mimeType: 'image/jpeg', preview: dataUrl })
+      }
+      img.onerror = () => setImgError('Image illisible — essaie un autre fichier')
+      img.src = reader.result
+    }
+    reader.onerror = () => setImgError('Lecture du fichier impossible')
+    reader.readAsDataURL(file)
+  }
+
   // ── Image generation ──
   async function runImageGeneration() {
-    if (!imgPrompt.trim()) return
     setImgError('')
+
+    // Mode "à partir d'une image" (img2img via Gemini)
+    if (imgSource === 'edit') {
+      if (!refImage) { setImgError('Importe d\'abord une image de référence'); return }
+      if (!imgPrompt.trim()) { setImgError('Décris la transformation souhaitée'); return }
+      setImgResults([])
+      setImgLoading(true)
+      try {
+        const r = await fetch('/api/ai/image-edit', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ imageBase64: refImage.base64, mimeType: refImage.mimeType, prompt: imgPrompt.trim() })
+        })
+        const data = await r.json()
+        if (!r.ok) setImgError(data.error || `Erreur ${r.status}`)
+        else if (data.urls?.length) setImgResults(data.urls)
+        else setImgError('Aucune image générée')
+      } catch (err) {
+        setImgError(err.message)
+      } finally {
+        setImgLoading(false)
+      }
+      return
+    }
+
+    // Mode "rechercher une photo" (photos stock par mots-clés)
+    if (!imgPrompt.trim()) return
     setImgResults([])
     setImgLoading(true)
-
     try {
       const r = await fetch('/api/ai/image', {
         method: 'POST',
@@ -441,66 +500,128 @@ export default function AIModal({ open, onClose, onInsert, onAddImage, platform 
               <>
                 {imgResults.length === 0 && !imgLoading && (
                   <>
+                    {/* Sous-mode : rechercher une photo vs transformer une image */}
+                    <div className="grid grid-cols-2 gap-1.5">
+                      <button
+                        onClick={() => { setImgSource('search'); setImgError('') }}
+                        className={`flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-medium border transition-all ${
+                          imgSource === 'search'
+                            ? 'border-sage-500 bg-sage-100 text-sage-700'
+                            : 'border-warm-200 bg-warm-50 text-warm-500 hover:border-warm-300'
+                        }`}
+                      >
+                        <ImageIcon size={14} /> Rechercher une photo
+                      </button>
+                      <button
+                        onClick={() => { setImgSource('edit'); setImgError('') }}
+                        className={`flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-medium border transition-all ${
+                          imgSource === 'edit'
+                            ? 'border-sage-500 bg-sage-100 text-sage-700'
+                            : 'border-warm-200 bg-warm-50 text-warm-500 hover:border-warm-300'
+                        }`}
+                      >
+                        <Wand2 size={14} /> À partir d'une image
+                      </button>
+                    </div>
+
+                    {/* Mode img2img : import de l'image de référence */}
+                    {imgSource === 'edit' && (
+                      <div>
+                        <label className="block text-xs text-warm-500 uppercase tracking-wider font-semibold mb-2">
+                          Image de référence
+                        </label>
+                        <input ref={refFileRef} type="file" accept="image/*" onChange={handleRefFile} className="hidden" />
+                        {refImage ? (
+                          <div className="relative rounded-xl overflow-hidden border border-warm-200">
+                            <img src={refImage.preview} alt="référence" className="w-full max-h-48 object-cover" />
+                            <button
+                              onClick={() => { setRefImage(null); if (refFileRef.current) refFileRef.current.value = '' }}
+                              className="absolute top-2 right-2 bg-warm-800/70 text-white rounded-full px-2.5 py-1 text-[11px] hover:bg-warm-800"
+                            >
+                              Changer
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => refFileRef.current?.click()}
+                            className="w-full flex flex-col items-center justify-center gap-1.5 py-6 rounded-xl border-2 border-dashed border-warm-300 bg-warm-50 hover:border-sage-400 hover:bg-sage-50 transition-colors text-warm-500"
+                          >
+                            <ImageIcon size={22} className="text-sage-600" />
+                            <span className="text-xs font-medium">Importer une image</span>
+                            <span className="text-[10px] text-warm-400">photo de ta salle, un produit, une ambiance…</span>
+                          </button>
+                        )}
+                      </div>
+                    )}
+
                     <div>
                       <label className="block text-xs text-warm-500 uppercase tracking-wider font-semibold mb-2">
-                        Décris l'image que tu veux
+                        {imgSource === 'edit' ? 'Décris la transformation' : 'Décris l\'image que tu veux'}
                       </label>
                       <textarea
                         value={imgPrompt}
                         onChange={e => setImgPrompt(e.target.value)}
-                        placeholder="ex: huile de massage dorée versée sur des galets de bois clair…"
+                        placeholder={imgSource === 'edit'
+                          ? 'ex: ambiance spa zen, lumière dorée douce, ajoute des bougies et des galets…'
+                          : 'ex: huile de massage dorée versée sur des galets de bois clair…'}
                         rows={3}
                         className="w-full bg-warm-50 border border-warm-200 rounded-xl px-4 py-3 text-[15px] text-warm-700 placeholder-warm-400 outline-none focus:border-sage-500 transition-colors resize-none"
                       />
                       <p className="text-[10px] text-warm-400 mt-1.5">
-                        💡 Tu peux écrire en français — un style « ambiance bien-être » est ajouté automatiquement
+                        {imgSource === 'edit'
+                          ? '💡 L\'IA transforme ton image selon ta consigne (powered by Gemini)'
+                          : '💡 Tu peux écrire en français — un style « ambiance bien-être » est ajouté automatiquement'}
                       </p>
                     </div>
 
-                    <div>
-                      <p className="text-[10px] text-warm-400 uppercase tracking-wider font-semibold mb-2">Style de référence</p>
-                      <div className="grid grid-cols-2 gap-1.5">
-                        {IMAGE_PRESETS.map(({ id, label, icon: Icon, prompt }) => (
-                          <button
-                            key={id}
-                            onClick={() => setImgPrompt(prompt)}
-                            className="flex items-center gap-2 text-xs text-warm-600 bg-warm-50 hover:bg-warm-100 active:bg-warm-200 border border-warm-200 hover:border-warm-300 rounded-lg px-2.5 py-2 transition-colors text-left"
-                          >
-                            <Icon size={14} className="text-sage-600 flex-shrink-0" />
-                            <span>{label}</span>
-                          </button>
-                        ))}
-                      </div>
-                    </div>
+                    {imgSource === 'search' && (
+                      <>
+                        <div>
+                          <p className="text-[10px] text-warm-400 uppercase tracking-wider font-semibold mb-2">Style de référence</p>
+                          <div className="grid grid-cols-2 gap-1.5">
+                            {IMAGE_PRESETS.map(({ id, label, icon: Icon, prompt }) => (
+                              <button
+                                key={id}
+                                onClick={() => setImgPrompt(prompt)}
+                                className="flex items-center gap-2 text-xs text-warm-600 bg-warm-50 hover:bg-warm-100 active:bg-warm-200 border border-warm-200 hover:border-warm-300 rounded-lg px-2.5 py-2 transition-colors text-left"
+                              >
+                                <Icon size={14} className="text-sage-600 flex-shrink-0" />
+                                <span>{label}</span>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
 
-                    <div>
-                      <p className="text-[10px] text-warm-400 uppercase tracking-wider font-semibold mb-2">Format</p>
-                      <div className="grid grid-cols-4 gap-1.5">
-                        {IMAGE_RATIOS.map(({ id, label, desc, icon: Icon }) => (
-                          <button
-                            key={id}
-                            onClick={() => setImgRatio(id)}
-                            title={desc}
-                            className={`flex flex-col items-center gap-0.5 py-2 px-1 rounded-lg text-[10px] font-medium transition-all border ${
-                              imgRatio === id
-                                ? 'border-sage-500 bg-sage-100 text-sage-700'
-                                : 'border-warm-200 bg-warm-50 text-warm-500 hover:border-warm-300'
-                            }`}
-                          >
-                            <Icon size={14} />
-                            <span>{label}</span>
-                          </button>
-                        ))}
-                      </div>
-                    </div>
+                        <div>
+                          <p className="text-[10px] text-warm-400 uppercase tracking-wider font-semibold mb-2">Format</p>
+                          <div className="grid grid-cols-4 gap-1.5">
+                            {IMAGE_RATIOS.map(({ id, label, desc, icon: Icon }) => (
+                              <button
+                                key={id}
+                                onClick={() => setImgRatio(id)}
+                                title={desc}
+                                className={`flex flex-col items-center gap-0.5 py-2 px-1 rounded-lg text-[10px] font-medium transition-all border ${
+                                  imgRatio === id
+                                    ? 'border-sage-500 bg-sage-100 text-sage-700'
+                                    : 'border-warm-200 bg-warm-50 text-warm-500 hover:border-warm-300'
+                                }`}
+                              >
+                                <Icon size={14} />
+                                <span>{label}</span>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      </>
+                    )}
 
                     <button
                       onClick={runImageGeneration}
-                      disabled={!imgPrompt.trim()}
+                      disabled={imgSource === 'edit' ? (!refImage || !imgPrompt.trim()) : !imgPrompt.trim()}
                       className="w-full flex items-center justify-center gap-2 py-3 rounded-xl font-semibold text-sm text-white bg-sage-600 hover:bg-sage-500 active:bg-sage-700 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-sm shadow-sage-500/20"
                     >
-                      <Sparkles size={16} />
-                      Générer 4 images
+                      {imgSource === 'edit' ? <Wand2 size={16} /> : <Sparkles size={16} />}
+                      {imgSource === 'edit' ? 'Transformer l\'image' : 'Générer 4 images'}
                     </button>
                   </>
                 )}
@@ -508,7 +629,7 @@ export default function AIModal({ open, onClose, onInsert, onAddImage, platform 
                 {imgLoading && (
                   <div className="flex flex-col items-center justify-center py-12 gap-3">
                     <Loader2 size={32} className="text-sage-600 animate-spin" />
-                    <p className="text-sm text-warm-500">Préparation…</p>
+                    <p className="text-sm text-warm-500">{imgSource === 'edit' ? 'Gemini transforme ton image… (quelques secondes)' : 'Préparation…'}</p>
                   </div>
                 )}
 
@@ -539,7 +660,7 @@ export default function AIModal({ open, onClose, onInsert, onAddImage, platform 
                       className="w-full mt-3 flex items-center justify-center gap-2 py-2.5 rounded-xl font-semibold text-sm text-sage-700 bg-sage-100 hover:bg-sage-200 active:bg-sage-300 disabled:opacity-40 transition-all border border-sage-300"
                     >
                       <RefreshCw size={14} />
-                      Générer 4 autres
+                      {imgSource === 'edit' ? 'Transformer à nouveau' : 'Générer 4 autres'}
                     </button>
                   </div>
                 )}
