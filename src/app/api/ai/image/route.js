@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server'
-import { requireUser } from '@/lib/auth'
+import { requireAuth } from '@/lib/auth'
 import { generateImages } from '@/lib/image-gen'
 
 export async function POST(req) {
-  const auth = await requireUser(req)
+  const auth = requireAuth(req)
   if (auth instanceof NextResponse) return auth
 
   try {
