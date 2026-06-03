@@ -1,21 +1,17 @@
-/**
- * Generate images via Flux Schnell on Replicate.
- * Body: { prompt, aspectRatio?, count? }
- * Returns: { success: true, urls: [...] } or { error }
- */
-
+import { NextResponse } from 'next/server'
+import { requireUser } from '@/lib/auth'
 import { generateImages } from '@/lib/image-gen'
 
-// Sync function — just builds URLs, no fetch on server
 export async function POST(req) {
+  const auth = await requireUser(req)
+  if (auth instanceof NextResponse) return auth
+
   try {
     const { prompt, aspectRatio = '1:1', count = 4 } = await req.json()
-
-    if (!prompt || !prompt.trim()) {
+    if (!prompt?.trim()) {
       return Response.json({ error: 'Décris l\'image que tu veux générer' }, { status: 400 })
     }
-
-    const urls = generateImages({ prompt, aspectRatio, count })
+    const urls = await generateImages({ prompt, aspectRatio, count })
     return Response.json({ success: true, urls })
   } catch (err) {
     console.error('[ai/image]', err)

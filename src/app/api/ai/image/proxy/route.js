@@ -7,7 +7,11 @@
 
 export const maxDuration = 60
 
-const ALLOWED_HOST = 'image.pollinations.ai'
+const ALLOWED_HOSTS = new Set([
+  'loremflickr.com',        // source par défaut (sans clé)
+  'images.pexels.com',      // source Pexels (si PEXELS_API_KEY)
+  'image.pollinations.ai',  // ancienne source (conservée par compat)
+])
 
 export async function GET(req) {
   try {
@@ -20,7 +24,7 @@ export async function GET(req) {
     // Whitelist: only proxy to image.pollinations.ai
     let targetUrl
     try { targetUrl = new URL(target) } catch { return new Response('Invalid URL', { status: 400 }) }
-    if (targetUrl.host !== ALLOWED_HOST) {
+    if (!ALLOWED_HOSTS.has(targetUrl.host)) {
       return new Response('Host not allowed', { status: 403 })
     }
 

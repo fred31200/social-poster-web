@@ -50,7 +50,7 @@ function ImageResult({ url, idx, onSelect, adding, disabled }) {
       {!loaded && !error && (
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-warm-100">
           <Loader2 size={20} className="text-sage-600 animate-spin" />
-          <span className="text-[10px] text-warm-500">Génération…</span>
+          <span className="text-[10px] text-warm-500">Chargement…</span>
         </div>
       )}
       {error && (
@@ -277,7 +277,7 @@ export default function AIModal({ open, onClose, onInsert, onAddImage, platform 
               <div>
                 <h2 className="text-warm-700 font-semibold text-[15px] leading-tight">Générateur IA</h2>
                 <p className="text-warm-500 text-[11px]">
-                  {tab === 'text' ? 'Claude · ton style massage' : 'Flux · images bien-être'}
+                  {tab === 'text' ? 'Claude · ton style massage' : 'Photos bien-être · prêtes à publier'}
                 </p>
               </div>
             </div>
@@ -514,7 +514,7 @@ export default function AIModal({ open, onClose, onInsert, onAddImage, platform 
                       Choisis l'image que tu veux utiliser
                     </p>
                     <p className="text-[11px] text-warm-400 mb-2">
-                      ⏳ Chaque image prend 5-10 sec à charger
+                      ⏳ Quelques secondes pour charger les photos
                     </p>
                     <div className="grid grid-cols-2 gap-2">
                       {imgResults.map((url, i) => (
