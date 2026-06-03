@@ -10,7 +10,7 @@ import FormData from 'form-data'
 export async function uploadToPublicHost(input, filename = 'image.jpg') {
   const getStream = () => {
     if (typeof input === 'string') return fs.createReadStream(input)
-    if (Buffer.isBuffer(input)) return input
+    if (Buffer.isBuffer(input)) return input // Buffer → form-data fixe le Content-Length (requis par catbox)
     return input
   }
 
@@ -60,4 +60,17 @@ export async function uploadToPublicHost(input, filename = 'image.jpg') {
   } catch (e) { errors.push('uguu: ' + (e.message || 'failed')) }
 
   throw new Error('Tous les hébergeurs d\'image ont échoué: ' + errors.join(' | '))
+}
+
+/**
+ * Récupère les octets d'un média qu'il soit une URL publique (prod, depuis
+ * l'upload) ou un chemin de fichier local (dev). Utile pour les plateformes
+ * qui doivent uploader les bytes elles-mêmes (ex: LinkedIn).
+ */
+export async function getMediaBytes(ref) {
+  if (/^https?:\/\//i.test(ref)) {
+    const r = await axios.get(ref, { responseType: 'arraybuffer', timeout: 30000 })
+    return Buffer.from(r.data)
+  }
+  return fs.readFileSync(ref)
 }

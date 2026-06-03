@@ -3,7 +3,7 @@
  */
 
 import axios from 'axios'
-import fs from 'fs'
+import { getMediaBytes } from '../upload'
 
 // ─── OAuth ──────────────────────────────────────────────────────────────────
 export function buildLinkedInOAuthURL({ clientId, redirectUri, state = 'linkedin' }) {
@@ -80,7 +80,7 @@ export async function postToLinkedIn(account, content, mediaPaths = []) {
       }
     }, { headers })
     const uploadUrl = regR.data.value.uploadMechanism['com.linkedin.digitalmedia.uploading.MediaUploadHttpRequest'].uploadUrl
-    await axios.put(uploadUrl, fs.readFileSync(mediaPath), {
+    await axios.put(uploadUrl, await getMediaBytes(mediaPath), {
       headers: { Authorization: `Bearer ${token}`, 'Content-Type': isVideo ? 'video/mp4' : 'image/jpeg' }
     })
     mediaAssets.push({

@@ -131,7 +131,11 @@ export default function AIModal({ open, onClose, onInsert, onAddImage, platform 
   // ── Text generation ──
   async function runTextGeneration({ mode: m, customCurrentText }) {
     setTextError('')
-    setGenerated('')
+    // Mode "hashtags" : on AJOUTE les hashtags sous le post existant au lieu de
+    // le remplacer (sinon on perdait le post généré).
+    const isHashtags = m === 'hashtags'
+    const baseText = (generated.trim() || currentText.trim())
+    if (!isHashtags) setGenerated('')
     setTextLoading(true)
     setMode(m)
     const ctrl = new AbortController()
@@ -142,7 +146,7 @@ export default function AIModal({ open, onClose, onInsert, onAddImage, platform 
         mode: m,
         topic: topic.trim(),
         platform,
-        currentText: customCurrentText ?? generated.trim() ?? currentText.trim(),
+        currentText: customCurrentText ?? baseText,
       }
       const r = await fetch('/api/ai/generate', {
         method: 'POST',
@@ -179,7 +183,7 @@ export default function AIModal({ open, onClose, onInsert, onAddImage, platform 
             if (data.error) { setTextError(data.error); break }
             if (data.text) {
               acc += data.text
-              setGenerated(acc)
+              setGenerated(isHashtags ? `${baseText}\n\n${acc}` : acc)
             }
             if (data.done) {
               setTextLoading(false)
