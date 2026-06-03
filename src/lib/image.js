@@ -27,6 +27,18 @@ export async function transformForInstagram(buffer, mode = 'square', bgColor = '
     .toBuffer()
 }
 
+/**
+ * Compresse/convertit une image en JPEG (plus léger et plus fiable à héberger
+ * que les gros PNG renvoyés par Gemini, ~2 Mo → quelques centaines de Ko).
+ */
+export async function compressJpeg(buffer, maxDim = 1280, quality = 88) {
+  return sharp(buffer)
+    .rotate()
+    .resize({ width: maxDim, height: maxDim, fit: 'inside', withoutEnlargement: true })
+    .jpeg({ quality, mozjpeg: true })
+    .toBuffer()
+}
+
 export async function getImageMetadata(buffer) {
   const m = await sharp(buffer).metadata()
   return {

@@ -11,12 +11,14 @@ const ALLOWED_HOSTS = new Set([
   'loremflickr.com',        // source par défaut (sans clé)
   'images.pexels.com',      // source Pexels (si PEXELS_API_KEY)
   'image.pollinations.ai',  // ancienne source (conservée par compat)
-  // Hôtes publics où l'on dépose les images générées par IA (img2img Gemini)
-  'files.catbox.moe',
-  '0x0.st',
-  'o.uguu.se',
-  'a.uguu.se',
+  '0x0.st',                 // hôte public (images générées hébergées à l'upload)
 ])
+// Hôtes publics qui utilisent plusieurs sous-domaines (a./d./o.uguu.se, files.catbox.moe…)
+const ALLOWED_SUFFIXES = ['.uguu.se', '.catbox.moe']
+
+function hostAllowed(host) {
+  return ALLOWED_HOSTS.has(host) || ALLOWED_SUFFIXES.some(s => host.endsWith(s))
+}
 
 export async function GET(req) {
   try {
@@ -26,10 +28,10 @@ export async function GET(req) {
       return new Response('Missing url param', { status: 400 })
     }
 
-    // Whitelist: only proxy to image.pollinations.ai
+    // Whitelist d'hôtes (exact + suffixes pour les hôtes multi-sous-domaines)
     let targetUrl
     try { targetUrl = new URL(target) } catch { return new Response('Invalid URL', { status: 400 }) }
-    if (!ALLOWED_HOSTS.has(targetUrl.host)) {
+    if (!hostAllowed(targetUrl.host)) {
       return new Response('Host not allowed', { status: 403 })
     }
 
