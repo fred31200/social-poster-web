@@ -5,14 +5,52 @@ import {
   Type, ImageIcon, Square, RectangleVertical, RectangleHorizontal, Leaf, Flower2, Soup, Heart, Plus
 } from 'lucide-react'
 
-const QUICK_TOPICS = [
-  'Une intention pour la nouvelle lune',
-  'Comment s\'ancrer quand le mental s\'emballe',
-  'Le rituel du matin pour aligner corps et esprit',
+// Large réservoir d'idées (spiritualité au sens large : énergétique, astro,
+// lithothérapie, dév. perso, saisons, rituels, ayurveda, pleine conscience…).
+// On en tire 6 au hasard à chaque ouverture pour varier les suggestions.
+const QUICK_TOPICS_POOL = [
+  // Cycles, lune & astrologie
+  'Poser une intention à la nouvelle lune',
+  'Ce que la pleine lune réveille en nous',
+  'Vivre la saison selon son signe astral',
+  'Les cycles de la nature comme guides intérieurs',
+  // Énergétique & subtil
+  'Rééquilibrer ses chakras au quotidien',
+  'Se reconnecter à son énergie vitale (prana / chi)',
+  'Les cristaux et leurs bienfaits subtils',
+  'Nettoyer son espace et son énergie',
+  // Développement personnel
   'Lâcher-prise : ce que ça veut vraiment dire',
-  'Se reconnecter à son énergie au changement de saison',
+  'Poser ses limites avec douceur',
+  'Cultiver la gratitude au quotidien',
+  'Apprivoiser son enfant intérieur',
+  'Sortir du mental qui s\'emballe',
+  'Faire la paix avec ses émotions',
+  'Ralentir dans un monde qui va trop vite',
+  // Corps, souffle & ayurveda
+  'Le rituel du matin pour aligner corps et esprit',
+  'Le souffle comme ancrage',
+  'Les bienfaits du massage abhyanga',
+  'Connaître son dosha pour mieux s\'équilibrer',
+  'Manger en pleine conscience',
+  'Le sommeil, ce soin sacré',
+  // Méditation & présence
   'Méditation : 3 minutes pour revenir à soi',
+  'Cultiver la présence dans les petits gestes',
+  'Créer une bulle de calme chez soi',
+  // Nature & saisons
+  'Se reconnecter à la nature au fil des saisons',
+  'Le pouvoir apaisant de l\'eau et de la forêt',
+  'Accueillir l\'énergie du changement de saison',
+  // Rituels & soin de soi
+  'Créer un rituel du soir apaisant',
+  'Un bain rituel pour se régénérer',
+  'S\'offrir un temps pour soi sans culpabiliser',
 ]
+
+function pickRandom(arr, n) {
+  return [...arr].sort(() => Math.random() - 0.5).slice(0, n)
+}
 
 const REFINE_ACTIONS = [
   { id: 'shorter',     label: 'Plus court',  icon: Scissors },
@@ -90,6 +128,7 @@ export default function AIModal({ open, onClose, onInsert, onAddImage, platform 
   const [textLoading, setTextLoading] = useState(false)
   const [textError, setTextError] = useState('')
   const [mode, setMode] = useState('generate')
+  const [quickTopics, setQuickTopics] = useState([]) // 6 idées tirées au hasard
   const textAbortRef = useRef(null)
 
   // ── Image state ──
@@ -111,6 +150,7 @@ export default function AIModal({ open, onClose, onInsert, onAddImage, platform 
       setGenerated('')
       setTextError('')
       setMode('generate')
+      setQuickTopics(pickRandom(QUICK_TOPICS_POOL, 6))
       setImgPrompt('')
       setImgResults([])
       setImgError('')
@@ -407,9 +447,17 @@ export default function AIModal({ open, onClose, onInsert, onAddImage, platform 
                     </div>
 
                     <div>
-                      <p className="text-[10px] text-warm-400 uppercase tracking-wider font-semibold mb-2">Idées rapides</p>
+                      <div className="flex items-center justify-between mb-2">
+                        <p className="text-[10px] text-warm-400 uppercase tracking-wider font-semibold">Idées rapides</p>
+                        <button
+                          onClick={() => setQuickTopics(pickRandom(QUICK_TOPICS_POOL, 6))}
+                          className="flex items-center gap-1 text-[10px] text-sage-600 hover:text-sage-700 font-medium transition-colors"
+                        >
+                          <RefreshCw size={11} /> Autres idées
+                        </button>
+                      </div>
                       <div className="flex flex-wrap gap-1.5">
-                        {QUICK_TOPICS.map((t, i) => (
+                        {quickTopics.map((t, i) => (
                           <button
                             key={i}
                             onClick={() => setTopic(t)}
