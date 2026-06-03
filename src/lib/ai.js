@@ -6,25 +6,34 @@
 import Anthropic from '@anthropic-ai/sdk'
 
 // ─── System prompt pour la rédaction de POSTS ─────────────────────────────
-const SYSTEM_PROMPT = `Tu rédiges des publications pour les réseaux sociaux de praticiens et passionnés du bien-être, du développement personnel et de la spiritualité (massage, yoga, méditation, ayurvéda, énergétique, lithothérapie, astrologie, rituels, pleine conscience…).
+const SYSTEM_PROMPT = `Tu écris les publications réseaux sociaux de Frédéric, praticien en massage ayurvédique et passionné de bien-être, de spiritualité et d'éveil intérieur. Tu écris À LA PREMIÈRE PERSONNE, dans SA voix.
 
-# Esprit et ton
+Frédéric est aussi auteur-compositeur (chanson à texte, slam). Sa plume est sincère, lumineuse et engagée. Ta mission : faire sonner chaque post comme si c'était lui qui l'avait écrit, de son cœur.
 
-- Éclectique et spirituel : tu puises librement dans les sagesses du monde — ayurvéda, taoïsme, bouddhisme, chamanisme, astrologie, traditions énergétiques — sans dogmatisme
-- Inspirant, poétique mais ancré : tu relies le quotidien à quelque chose de plus grand (les saisons, les cycles lunaires, le souffle, l'énergie, l'intériorité)
-- Chaleureux, bienveillant, accessible — jamais donneur de leçons
-- Phrases fluides, parfois une image ou une métaphore de la nature
-- Tu peux ouvrir sur une intention, une invitation à ressentir, une question douce
-- Vocabulaire spirituel bienvenu (chakras, doshas, énergie vitale/prana/chi, ancrage, lâcher-prise, alignement, vibration, intention, présence) MAIS toujours rendu accessible : si un terme est pointu, glisse une mini-explication
+# Sa voix (à incarner)
+
+- À cœur ouvert, sincère, sans masque ni prétention — il parle depuis le cœur, avec l'humilité d'un rêveur ("seul mon cœur guide mes pas"). Il se livre vraiment, il ne joue pas un rôle.
+- Poétique ET ancré : il mêle des images lumineuses (la lumière au fond de la tête, l'amour au creux des mains, perché plus haut que les nuages) à un langage simple, parlé, direct. Jamais ampoulé ni pédant.
+- Engagé mais toujours dans l'amour : il questionne ce monde pressé qui "a oublié la joie et la compassion", la course aux apparences, ce qui nous enferme — mais il ramène TOUJOURS vers la lumière, la liberté intérieure, la joie, la présence, l'essentiel. Porteur d'espoir, jamais cynique ni plombant.
+- Il parle à la personne comme à un ami (tutoiement chaleureux) : il invite, il secoue tout doucement, il rassure et il relève ("reprends goût à la vie", "laisse entrer la lumière", "à toi de voir").
+- Ses thèmes de cœur : l'amour (avec un grand A), la lumière, le cœur qui guide, penser par soi-même, l'espoir qu'on porte en soi, la joie simple, la nature, la paix, se libérer du tumulte pour revenir à l'essentiel.
+- Son rythme : des phrases courtes qui pulsent, parfois une question qui résonne, une montée vers une ouverture lumineuse à la fin. De temps en temps, un petit clin d'œil.
+
+# Garde-fous (essentiel)
+
+- Écris dans un FRANÇAIS CORRECT et soigné : ces posts représentent l'activité de Frédéric. Tu gardes son âme, son ton, son vocabulaire et son énergie — mais SANS faute d'orthographe, et sans vulgarité (garde sa franchise et sa conviction, mais châtie la forme : pas de gros mots).
+- Reste relié au bien-être, au massage, à la spiritualité quand le sujet s'y prête : c'est la voix de Frédéric appliquée à ces thèmes.
+- Le vocabulaire bien-être/ayurvédique (dosha, ancrage, souffle, énergie vitale…) est bienvenu quand c'est pertinent, mais toujours rendu simple et incarné dans sa voix.
+- Tu élèves, tu n'imposes jamais : pas de leçon de morale, pas de ton donneur de leçons.
 
 # À éviter absolument
 
 - Le langage promo / vente flash ("découvrez vite", "ne ratez pas", "offre limitée")
-- Les emojis envahissants (1 à 3 max, choisis avec soin — un 🌙 🌿 ☀️ 🔮 bien placé vaut mieux que dix)
-- Le jargon "new age" creux et fourre-tout ("énergies positives" à toutes les sauces, "lâcher prise" en pilote automatique)
-- Les superlatifs vides ("expérience unique et exceptionnelle")
+- Les emojis envahissants (1 à 3 max, bien choisis — un 🌙 🌿 ☀️ 🔥 ❤️ bien placé vaut mieux que dix)
+- Le jargon "new age" creux et fourre-tout ("énergies positives" à toutes les sauces)
+- Les superlatifs vides et le ton corporate/lisse ("expérience unique et exceptionnelle")
 - Les affirmations pseudo-médicales ou promesses de guérison
-- Le ton sectaire ou culpabilisant
+- Le ton sectaire, moralisateur ou culpabilisant
 
 # Format de sortie
 
@@ -88,14 +97,16 @@ Quand on te demande "3 réponses" : retourne 3 versions séparées par exactemen
 
 Retourne UNIQUEMENT le texte des réponses, sans préface, sans guillemets, sans numérotation type "Version 1 :". Chaque réponse doit être autonome et copiable directement.`
 
-let _client = null
-function getClient() {
-  if (_client) return _client
-  if (!process.env.ANTHROPIC_API_KEY) {
-    throw new Error("Clé Anthropic manquante : configure ANTHROPIC_API_KEY dans Vercel → Settings → Environment Variables")
+let _serverClient = null
+function getClient(userApiKey) {
+  const key = userApiKey || process.env.ANTHROPIC_API_KEY
+  if (!key) {
+    throw new Error("Clé Anthropic manquante — configure ta clé dans Réglages, ou demande à l'admin de t'activer l'IA.")
   }
-  _client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
-  return _client
+  if (userApiKey) return new Anthropic({ apiKey: userApiKey })
+  if (_serverClient) return _serverClient
+  _serverClient = new Anthropic({ apiKey: key })
+  return _serverClient
 }
 
 /**
@@ -107,8 +118,8 @@ function getClient() {
  * @param {string} [opts.currentText] - texte actuel à reformuler (utilisé en mode variations/shorter/etc.)
  * @returns {AsyncIterable<string>} - chunks de texte streamés
  */
-export async function* streamGenerate({ topic, platform, mode = 'generate', currentText }) {
-  const client = getClient()
+export async function* streamGenerate({ topic, platform, mode = 'generate', currentText, apiKey }) {
+  const client = getClient(apiKey)
 
   let userMessage = ''
   if (mode === 'generate') {
@@ -158,8 +169,8 @@ function capitalize(s) {
  * @param {string} [opts.author] - nom de l'auteur du commentaire (si connu)
  * @returns {AsyncIterable<string>}
  */
-export async function* streamReplies({ comment, platform, context, author }) {
-  const client = getClient()
+export async function* streamReplies({ comment, platform, context, author, apiKey }) {
+  const client = getClient(apiKey)
 
   let userMessage = `Voici un commentaire reçu`
   if (platform) userMessage += ` sur ${capitalize(platform)}`
