@@ -1,11 +1,13 @@
-import { NextResponse } from 'next/server'
-import { requireAuth } from '@/lib/auth'
+/**
+ * Génère des URLs d'images par mots-clés (LoremFlickr par défaut, Pexels si clé).
+ * L'auth est déjà assurée par le middleware proxy.js (cookie sp_auth requis sur
+ * toutes les routes /api/* non publiques) — pas besoin de re-vérifier ici.
+ * Body: { prompt, aspectRatio?, count? } → { success: true, urls: [...] }
+ */
+
 import { generateImages } from '@/lib/image-gen'
 
 export async function POST(req) {
-  const auth = requireAuth(req)
-  if (auth instanceof NextResponse) return auth
-
   try {
     const { prompt, aspectRatio = '1:1', count = 4 } = await req.json()
     if (!prompt?.trim()) {
