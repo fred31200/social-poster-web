@@ -61,6 +61,26 @@ export async function getUserPagesAndInstagram(accessToken) {
 }
 
 // ─── Posting: Facebook ──────────────────────────────────────────────────────
+const isUrl = (p) => /^https?:\/\//i.test(p)
+
+/**
+ * Publie une photo sur la Page et renvoie son ID.
+ * media = URL publique (prod, Vercel) → on passe le paramètre `url` (Facebook va
+ *         chercher l'image lui-même) ; OU chemin local (dev) → upload du fichier.
+ */
+async function uploadFacebookPhoto(pageId, token, media, extra = {}) {
+  if (isUrl(media)) {
+    const r = await axios.post(`${META_API}/${pageId}/photos`, { url: media, access_token: token, ...extra })
+    return r.data.id
+  }
+  const fd = new FormData()
+  fd.append('source', fs.createReadStream(media))
+  fd.append('access_token', token)
+  for (const [k, v] of Object.entries(extra)) fd.append(k, String(v))
+  const r = await axios.post(`${META_API}/${pageId}/photos`, fd, { headers: fd.getHeaders() })
+  return r.data.id
+}
+
 export async function postToFacebook(account, content, mediaPaths = []) {
   const { access_token: token, page_id: pageId } = account
   if (mediaPaths.length === 0) {
@@ -68,24 +88,12 @@ export async function postToFacebook(account, content, mediaPaths = []) {
     return r.data.id
   }
   if (mediaPaths.length === 1) {
-    const fd = new FormData()
-    fd.append('source', fs.createReadStream(mediaPaths[0]))
-    fd.append('caption', content)
-    const r = await axios.post(`${META_API}/${pageId}/photos`, fd, {
-      headers: { ...fd.getHeaders(), Authorization: `Bearer ${token}` }
-    })
-    return r.data.id
+    return await uploadFacebookPhoto(pageId, token, mediaPaths[0], { caption: content })
   }
-  // Multi-photo album
-  const photoIds = await Promise.all(mediaPaths.map(async (p) => {
-    const fd = new FormData()
-    fd.append('source', fs.createReadStream(p))
-    fd.append('published', 'false')
-    const r = await axios.post(`${META_API}/${pageId}/photos`, fd, {
-      headers: { ...fd.getHeaders(), Authorization: `Bearer ${token}` }
-    })
-    return { media_fbid: r.data.id }
-  }))
+  // Multi-photo album : on uploade chaque photo non publiée, puis on les attache au post
+  const photoIds = await Promise.all(mediaPaths.map(async (p) => ({
+    media_fbid: await uploadFacebookPhoto(pageId, token, p, { published: 'false' })
+  })))
   const r = await axios.post(`${META_API}/${pageId}/feed`, {
     message: content,
     attached_media: photoIds,
@@ -174,8 +182,9 @@ export async function postToInstagram(account, content, mediaPaths = []) {
   if (!igId) throw new Error('Compte Instagram Business non trouvé')
   if (mediaPaths.length === 0) throw new Error('Instagram nécessite au moins une image ou vidéo')
 
-  // Upload all local files to a public host first (Instagram API needs HTTPS URLs)
-  const publicUrls = await Promise.all(mediaPaths.map(p => uploadToPublicHost(p)))
+  // Instagram a besoin d'URLs HTTPS. En prod les médias sont déjà des URLs
+  // publiques (uploadées à l'upload) ; en dev on uploade les fichiers locaux.
+  const publicUrls = await Promise.all(mediaPaths.map(p => isUrl(p) ? p : uploadToPublicHost(p)))
 
   const createMedia = async (publicUrl, mediaPath, extra = {}) => {
     const isVideo = /\.(mp4|mov|avi)$/i.test(mediaPath)
