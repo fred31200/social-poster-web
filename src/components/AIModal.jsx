@@ -2,7 +2,8 @@
 import { useState, useEffect, useRef } from 'react'
 import {
   Sparkles, X, Loader2, RefreshCw, Check, Wand2, Scissors, Hash, Smile, Maximize2,
-  Type, ImageIcon, Square, RectangleVertical, RectangleHorizontal, Leaf, Flower2, Soup, Heart, Plus
+  Type, ImageIcon, Square, RectangleVertical, RectangleHorizontal, Leaf, Flower2, Soup, Heart, Plus,
+  Mountain, Hand, Droplets, Coffee, Gem, Sunrise, Moon, Sprout, Waves, Flower, Flame, Wind
 } from 'lucide-react'
 
 // Large réservoir d'idées (spiritualité au sens large : énergétique, astro,
@@ -60,11 +61,23 @@ const REFINE_ACTIONS = [
   { id: 'hashtags',    label: 'Hashtags',    icon: Hash },
 ]
 
-const IMAGE_PRESETS = [
-  { id: 'ambiance',  label: 'Ambiance zen',       icon: Leaf,    prompt: 'Espace de méditation paisible avec bougies, encens qui fume doucement, coussins, tons neutres et boisés, lumière dorée du matin' },
-  { id: 'cosmique',  label: 'Spirituel / cosmos', icon: Flower2, prompt: 'Illustration spirituelle onirique — phases de la lune, étoiles, mandala doré sur fond bleu nuit profond, aquarelle délicate' },
-  { id: 'nature',    label: 'Nature & éléments',  icon: Soup,    prompt: 'Nature apaisante au lever du soleil — forêt brumeuse, eau calme, pierres empilées en équilibre, lumière douce et spirituelle' },
-  { id: 'energie',   label: 'Énergie & soin',     icon: Heart,   prompt: 'Mains en geste de soin énergétique, lumière douce entre les paumes, cristaux et plantes, atmosphère sereine et lumineuse' },
+// Réservoir large de styles/scènes (on en tire 6 au hasard, rafraîchissables).
+const IMAGE_PRESETS_POOL = [
+  { id: 'zen',       label: 'Ambiance zen',       icon: Leaf,     prompt: 'Espace de méditation paisible avec bougies, encens qui fume doucement, coussins, tons neutres et boisés, lumière dorée du matin' },
+  { id: 'cosmique',  label: 'Spirituel / cosmos', icon: Sparkles, prompt: 'Illustration spirituelle onirique — phases de la lune, étoiles, mandala doré sur fond bleu nuit profond, aquarelle délicate' },
+  { id: 'nature',    label: 'Nature & éléments',  icon: Mountain, prompt: 'Nature apaisante au lever du soleil — forêt brumeuse, eau calme, pierres empilées en équilibre, lumière douce et spirituelle' },
+  { id: 'energie',   label: 'Énergie & soin',     icon: Heart,    prompt: 'Mains en geste de soin énergétique, lumière douce entre les paumes, cristaux et plantes, atmosphère sereine et lumineuse' },
+  { id: 'massage',   label: 'Massage & toucher',  icon: Hand,     prompt: 'Détail intime d\'un massage : des mains qui massent un dos avec de l\'huile chaude, serviettes blanches, lumière dorée tamisée, ambiance spa feutrée' },
+  { id: 'spa',       label: 'Cocon spa',          icon: Droplets, prompt: 'Composition spa cocooning : serviettes roulées, bougies allumées, fleurs de frangipanier, bol d\'eau et galets, lumière chaude et douce' },
+  { id: 'the',       label: 'Rituel du thé',      icon: Coffee,   prompt: 'Rituel du thé : théière, tasse fumante, tisane aux herbes, table en bois clair, vapeur délicate, lumière douce du matin, sérénité' },
+  { id: 'cristaux',  label: 'Pierres & cristaux', icon: Gem,      prompt: 'Cristaux de lithothérapie (améthyste, quartz rose) posés sur du bois, lumière douce qui les fait scintiller, ambiance feutrée et apaisante' },
+  { id: 'lever',     label: 'Lever de soleil',    icon: Sunrise,  prompt: 'Paysage au lever du soleil, brume légère sur un lac calme, lumière dorée et rosée, reflets, profonde sérénité' },
+  { id: 'lune',      label: 'Pleine lune',        icon: Moon,     prompt: 'Nuit douce sous une pleine lune, ciel étoilé, silhouettes d\'arbres, atmosphère contemplative et apaisante' },
+  { id: 'foret',     label: 'Forêt ressourçante', icon: Sprout,   prompt: 'Forêt verdoyante baignée d\'une lumière douce filtrant entre les arbres, mousse, fougères, rayons dorés, calme profond' },
+  { id: 'eau',       label: 'Eau & sérénité',     icon: Waves,    prompt: 'Surface d\'eau calme et claire, reflets doux, gouttes délicates, nénuphar, lumière apaisante, sensation de pureté' },
+  { id: 'fleurs',    label: 'Fleurs délicates',   icon: Flower,   prompt: 'Fleurs délicates (lotus, orchidée blanche) posées sur l\'eau, pétales, lumière douce et poétique, fond épuré' },
+  { id: 'bougies',   label: 'Lumière des bougies',icon: Flame,    prompt: 'Plusieurs bougies allumées dans une douce pénombre, lumière chaude et dansante, ambiance intime et apaisante' },
+  { id: 'yoga',      label: 'Yoga & souffle',     icon: Wind,     prompt: 'Tapis de yoga déroulé près d\'une fenêtre lumineuse, plante verte, lumière douce du matin, ambiance calme et inspirante' },
 ]
 
 const IMAGE_RATIOS = [
@@ -138,9 +151,10 @@ export default function AIModal({ open, onClose, onInsert, onAddImage, platform 
   const [imgLoading, setImgLoading] = useState(false)
   const [imgError, setImgError] = useState('')
   const [addingImageIdx, setAddingImageIdx] = useState(null)
-  // Sous-mode de l'onglet Image : 'search' (photos stock) | 'edit' (img2img Gemini)
+  // Sous-mode de l'onglet Image : 'search' (Décrire) | 'post' | 'edit' (img2img)
   const [imgSource, setImgSource] = useState('search')
   const [refImage, setRefImage] = useState(null) // { base64, mimeType, preview }
+  const [imgPresets, setImgPresets] = useState(() => pickRandom(IMAGE_PRESETS_POOL, 6)) // 6 styles tirés au hasard
   const refFileRef = useRef(null)
 
   // Reset when opening
@@ -157,6 +171,7 @@ export default function AIModal({ open, onClose, onInsert, onAddImage, platform 
       setAddingImageIdx(null)
       setImgSource('search')
       setRefImage(null)
+      setImgPresets(pickRandom(IMAGE_PRESETS_POOL, 6))
     } else if (textAbortRef.current) {
       textAbortRef.current.abort()
     }
@@ -681,9 +696,17 @@ export default function AIModal({ open, onClose, onInsert, onAddImage, platform 
 
                     {imgSource === 'search' && (
                       <div>
-                        <p className="text-[10px] text-warm-400 uppercase tracking-wider font-semibold mb-2">Style de référence</p>
+                        <div className="flex items-center justify-between mb-2">
+                          <p className="text-[10px] text-warm-400 uppercase tracking-wider font-semibold">Style de référence</p>
+                          <button
+                            onClick={() => setImgPresets(pickRandom(IMAGE_PRESETS_POOL, 6))}
+                            className="flex items-center gap-1 text-[10px] text-sage-600 hover:text-sage-700 font-medium transition-colors"
+                          >
+                            <RefreshCw size={11} /> Autres styles
+                          </button>
+                        </div>
                         <div className="grid grid-cols-2 gap-1.5">
-                          {IMAGE_PRESETS.map(({ id, label, icon: Icon, prompt }) => (
+                          {imgPresets.map(({ id, label, icon: Icon, prompt }) => (
                             <button
                               key={id}
                               onClick={() => setImgPrompt(prompt)}
