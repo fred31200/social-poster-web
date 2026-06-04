@@ -3,7 +3,7 @@ import { useState, useEffect, useRef } from 'react'
 import {
   Sparkles, X, Loader2, RefreshCw, Check, Wand2, Scissors, Hash, Smile, Maximize2,
   Type, ImageIcon, Square, RectangleVertical, RectangleHorizontal, Leaf, Flower2, Soup, Heart, Plus,
-  Mountain, Hand, Droplets, Coffee, Gem, Sunrise, Moon, Sprout, Waves, Flower, Flame, Wind
+  Mountain, Hand, Droplets, Coffee, Gem, Sunrise, Moon, Sprout, Waves, Flower, Flame, Wind, Copy
 } from 'lucide-react'
 
 // Large réservoir d'idées (spiritualité au sens large : énergétique, astro,
@@ -89,7 +89,7 @@ const IMAGE_RATIOS = [
 
 // ImageResult sub-component — handles per-image loading state since
 // Pollinations.ai generates server-side when the browser hits the URL
-function ImageResult({ url, idx, onSelect, adding, disabled }) {
+function ImageResult({ url, idx, onSelect, onCopy, copied, adding, disabled }) {
   const [loaded, setLoaded] = useState(false)
   const [error, setError] = useState(false)
   return (
@@ -98,6 +98,17 @@ function ImageResult({ url, idx, onSelect, adding, disabled }) {
       disabled={disabled || !loaded || error}
       className="relative aspect-square rounded-xl overflow-hidden border-2 border-warm-200 hover:border-sage-500 active:border-sage-600 transition-all group disabled:opacity-50 bg-warm-100"
     >
+      {loaded && !error && onCopy && (
+        <span
+          role="button"
+          tabIndex={0}
+          title="Copier l'image (pour la coller sur Facebook)"
+          onClick={(e) => { e.stopPropagation(); onCopy(url, idx) }}
+          className="absolute top-1.5 right-1.5 z-10 flex items-center gap-1 bg-white/90 hover:bg-white text-sage-700 rounded-lg px-2 py-1 text-[10px] font-semibold shadow-sm cursor-pointer transition-colors"
+        >
+          {copied ? <><Check size={11} /> Copié</> : <><Copy size={11} /> Copier</>}
+        </span>
+      )}
       {!loaded && !error && (
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-warm-100">
           <Loader2 size={20} className="text-sage-600 animate-spin" />
@@ -159,6 +170,10 @@ export default function AIModal({ open, onClose, onInsert, onAddImage, platform 
   const [imgPresets, setImgPresets] = useState(() => pickRandom(IMAGE_PRESETS_POOL, 6)) // 6 styles tirés au hasard
   const refFileRef = useRef(null)
 
+  // ── Copie manuelle (coller le post sur son mur perso Facebook) ──
+  const [copied, setCopied] = useState(false)        // texte copié
+  const [copiedImgIdx, setCopiedImgIdx] = useState(null) // image copiée (index)
+
   // Reset when opening
   useEffect(() => {
     if (open) {
@@ -168,6 +183,8 @@ export default function AIModal({ open, onClose, onInsert, onAddImage, platform 
       setMode('generate')
       setQuickTopics(pickRandom(QUICK_TOPICS_POOL, 6))
       setTextImage(null)
+      setCopied(false)
+      setCopiedImgIdx(null)
       setImgPrompt('')
       setImgResults([])
       setImgError('')
@@ -408,6 +425,58 @@ export default function AIModal({ open, onClose, onInsert, onAddImage, platform 
   function handleInsertText() {
     onInsert(generated)
     onClose()
+  }
+
+  // Copie le texte du post dans le presse-papier (pour le coller à la main, ex: mur Facebook perso)
+  async function handleCopyText() {
+    const text = generated || ''
+    try {
+      await navigator.clipboard.writeText(text)
+    } catch {
+      // Repli navigateurs anciens / contexte non sécurisé
+      const ta = document.createElement('textarea')
+      ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0'
+      document.body.appendChild(ta); ta.select()
+      try { document.execCommand('copy') } catch {}
+      ta.remove()
+    }
+    setCopied(true)
+    setTimeout(() => setCopied(false), 1900)
+  }
+
+  // Copie une image générée dans le presse-papier (PNG — seul format fiable). Repli: téléchargement.
+  async function handleCopyImage(url, idx) {
+    try {
+      const item = new ClipboardItem({
+        'image/png': (async () => {
+          const r = await fetch(url)
+          const blob = await r.blob()
+          const bmp = await createImageBitmap(blob)
+          const c = document.createElement('canvas')
+          c.width = bmp.width; c.height = bmp.height
+          c.getContext('2d').drawImage(bmp, 0, 0)
+          return await new Promise((res) => c.toBlob(res, 'image/png'))
+        })(),
+      })
+      await navigator.clipboard.write([item])
+      setCopiedImgIdx(idx)
+      setTimeout(() => setCopiedImgIdx(null), 1900)
+    } catch {
+      // Repli fiable : on télécharge l'image (l'utilisateur l'ajoute ensuite à son post FB)
+      try {
+        const r = await fetch(url)
+        const blob = await r.blob()
+        const a = document.createElement('a')
+        a.href = URL.createObjectURL(blob)
+        a.download = `image-${Date.now()}.jpg`
+        document.body.appendChild(a); a.click(); a.remove()
+        URL.revokeObjectURL(a.href)
+        setCopiedImgIdx(idx)
+        setTimeout(() => setCopiedImgIdx(null), 1900)
+      } catch {
+        setImgError('Copie de l\'image impossible — fais un clic droit sur l\'image puis « Enregistrer ».')
+      }
+    }
   }
 
   // ── Render ─────────────────────────────────────────────────────────────
@@ -806,6 +875,8 @@ export default function AIModal({ open, onClose, onInsert, onAddImage, platform 
                           url={url}
                           idx={i}
                           onSelect={handleAddImage}
+                          onCopy={handleCopyImage}
+                          copied={copiedImgIdx === i}
                           adding={addingImageIdx === i}
                           disabled={addingImageIdx !== null}
                         />
@@ -836,10 +907,15 @@ export default function AIModal({ open, onClose, onInsert, onAddImage, platform 
           {tab === 'text' && generated && !textLoading && (
             <div className="border-t border-warm-200 px-5 py-3 flex gap-2">
               <button
-                onClick={onClose}
-                className="px-4 py-2.5 border border-warm-200 hover:bg-warm-50 active:bg-warm-100 text-warm-600 text-sm font-medium rounded-xl transition-colors"
+                onClick={handleCopyText}
+                title="Copier le texte pour le coller à la main (mur Facebook perso, etc.)"
+                className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl font-semibold text-sm border transition-all ${
+                  copied
+                    ? 'bg-sage-600 border-sage-600 text-white'
+                    : 'bg-white border-sage-300 text-sage-700 hover:bg-sage-50 active:bg-sage-100'
+                }`}
               >
-                Annuler
+                {copied ? <><Check size={16} /> Copié !</> : <><Copy size={16} /> Copier</>}
               </button>
               <button
                 onClick={handleInsertText}
