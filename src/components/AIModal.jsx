@@ -326,15 +326,15 @@ export default function AIModal({ open, onClose, onInsert, onAddImage, platform 
       return
     }
 
-    // Mode "rechercher une photo" (photos stock par mots-clés)
+    // Mode "Décrire" : Gemini génère une image cohérente avec la description
     if (!imgPrompt.trim()) return
     setImgResults([])
     setImgLoading(true)
     try {
-      const r = await fetch('/api/ai/image', {
+      const r = await fetch('/api/ai/image-generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt: imgPrompt.trim(), aspectRatio: imgRatio, count: 4 })
+        body: JSON.stringify({ prompt: imgPrompt.trim() })
       })
       const data = await r.json()
       if (!r.ok) {
@@ -404,7 +404,7 @@ export default function AIModal({ open, onClose, onInsert, onAddImage, platform 
               <div>
                 <h2 className="text-warm-700 font-semibold text-[15px] leading-tight">Générateur IA</h2>
                 <p className="text-warm-500 text-[11px]">
-                  {tab === 'text' ? 'Claude · ton style massage' : 'Photos bien-être · prêtes à publier'}
+                  {tab === 'text' ? 'Claude · ton style massage' : 'Images IA · ambiance bien-être'}
                 </p>
               </div>
             </div>
@@ -582,7 +582,7 @@ export default function AIModal({ open, onClose, onInsert, onAddImage, platform 
                             : 'border-warm-200 bg-warm-50 text-warm-500 hover:border-warm-300'
                         }`}
                       >
-                        <ImageIcon size={15} /> Une photo
+                        <Sparkles size={15} /> Décrire
                       </button>
                       <button
                         onClick={() => { setImgSource('post'); setImgError('') }}
@@ -592,7 +592,7 @@ export default function AIModal({ open, onClose, onInsert, onAddImage, platform 
                             : 'border-warm-200 bg-warm-50 text-warm-500 hover:border-warm-300'
                         }`}
                       >
-                        <Sparkles size={15} /> Depuis mon post
+                        <Type size={15} /> Depuis mon post
                       </button>
                       <button
                         onClick={() => { setImgSource('edit'); setImgError('') }}
@@ -674,50 +674,27 @@ export default function AIModal({ open, onClose, onInsert, onAddImage, platform 
                         <p className="text-[10px] text-warm-400 mt-1.5">
                           {imgSource === 'edit'
                             ? '💡 L\'IA transforme ton image selon ta consigne (powered by Gemini)'
-                            : '💡 Tu peux écrire en français — un style « ambiance bien-être » est ajouté automatiquement'}
+                            : '💡 L\'IA crée une image fidèle à ta description, en ambiance bien-être (powered by Gemini)'}
                         </p>
                       </div>
                     )}
 
                     {imgSource === 'search' && (
-                      <>
-                        <div>
-                          <p className="text-[10px] text-warm-400 uppercase tracking-wider font-semibold mb-2">Style de référence</p>
-                          <div className="grid grid-cols-2 gap-1.5">
-                            {IMAGE_PRESETS.map(({ id, label, icon: Icon, prompt }) => (
-                              <button
-                                key={id}
-                                onClick={() => setImgPrompt(prompt)}
-                                className="flex items-center gap-2 text-xs text-warm-600 bg-warm-50 hover:bg-warm-100 active:bg-warm-200 border border-warm-200 hover:border-warm-300 rounded-lg px-2.5 py-2 transition-colors text-left"
-                              >
-                                <Icon size={14} className="text-sage-600 flex-shrink-0" />
-                                <span>{label}</span>
-                              </button>
-                            ))}
-                          </div>
+                      <div>
+                        <p className="text-[10px] text-warm-400 uppercase tracking-wider font-semibold mb-2">Style de référence</p>
+                        <div className="grid grid-cols-2 gap-1.5">
+                          {IMAGE_PRESETS.map(({ id, label, icon: Icon, prompt }) => (
+                            <button
+                              key={id}
+                              onClick={() => setImgPrompt(prompt)}
+                              className="flex items-center gap-2 text-xs text-warm-600 bg-warm-50 hover:bg-warm-100 active:bg-warm-200 border border-warm-200 hover:border-warm-300 rounded-lg px-2.5 py-2 transition-colors text-left"
+                            >
+                              <Icon size={14} className="text-sage-600 flex-shrink-0" />
+                              <span>{label}</span>
+                            </button>
+                          ))}
                         </div>
-
-                        <div>
-                          <p className="text-[10px] text-warm-400 uppercase tracking-wider font-semibold mb-2">Format</p>
-                          <div className="grid grid-cols-4 gap-1.5">
-                            {IMAGE_RATIOS.map(({ id, label, desc, icon: Icon }) => (
-                              <button
-                                key={id}
-                                onClick={() => setImgRatio(id)}
-                                title={desc}
-                                className={`flex flex-col items-center gap-0.5 py-2 px-1 rounded-lg text-[10px] font-medium transition-all border ${
-                                  imgRatio === id
-                                    ? 'border-sage-500 bg-sage-100 text-sage-700'
-                                    : 'border-warm-200 bg-warm-50 text-warm-500 hover:border-warm-300'
-                                }`}
-                              >
-                                <Icon size={14} />
-                                <span>{label}</span>
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-                      </>
+                      </div>
                     )}
 
                     <button
@@ -730,7 +707,7 @@ export default function AIModal({ open, onClose, onInsert, onAddImage, platform 
                       className="w-full flex items-center justify-center gap-2 py-3 rounded-xl font-semibold text-sm text-white bg-sage-600 hover:bg-sage-500 active:bg-sage-700 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-sm shadow-sage-500/20"
                     >
                       {imgSource === 'edit' ? <Wand2 size={16} /> : <Sparkles size={16} />}
-                      {imgSource === 'edit' ? 'Transformer l\'image' : imgSource === 'post' ? 'Créer l\'image du post' : 'Générer 4 images'}
+                      {imgSource === 'edit' ? 'Transformer l\'image' : imgSource === 'post' ? 'Créer l\'image du post' : 'Créer l\'image'}
                     </button>
                   </>
                 )}
@@ -738,7 +715,7 @@ export default function AIModal({ open, onClose, onInsert, onAddImage, platform 
                 {imgLoading && (
                   <div className="flex flex-col items-center justify-center py-12 gap-3">
                     <Loader2 size={32} className="text-sage-600 animate-spin" />
-                    <p className="text-sm text-warm-500">{imgSource === 'edit' ? 'Gemini transforme ton image… (quelques secondes)' : imgSource === 'post' ? 'Gemini crée ton image… (quelques secondes)' : 'Préparation…'}</p>
+                    <p className="text-sm text-warm-500">{imgSource === 'edit' ? 'Gemini transforme ton image… (quelques secondes)' : 'Gemini crée ton image… (quelques secondes)'}</p>
                   </div>
                 )}
 
@@ -769,7 +746,7 @@ export default function AIModal({ open, onClose, onInsert, onAddImage, platform 
                       className="w-full mt-3 flex items-center justify-center gap-2 py-2.5 rounded-xl font-semibold text-sm text-sage-700 bg-sage-100 hover:bg-sage-200 active:bg-sage-300 disabled:opacity-40 transition-all border border-sage-300"
                     >
                       <RefreshCw size={14} />
-                      {imgSource === 'edit' ? 'Transformer à nouveau' : imgSource === 'post' ? 'Créer une autre image' : 'Générer 4 autres'}
+                      {imgSource === 'edit' ? 'Transformer à nouveau' : 'Créer une autre image'}
                     </button>
                   </div>
                 )}
