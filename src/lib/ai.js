@@ -121,7 +121,7 @@ function getClient(userApiKey) {
  * @param {string} [opts.currentText] - texte actuel à reformuler (utilisé en mode variations/shorter/etc.)
  * @returns {AsyncIterable<string>} - chunks de texte streamés
  */
-export async function* streamGenerate({ topic, platform, mode = 'generate', currentText, apiKey }) {
+export async function* streamGenerate({ topic, platform, mode = 'generate', currentText, imageBase64, mimeType, apiKey }) {
   const client = getClient(apiKey)
 
   let userMessage = ''
@@ -143,13 +143,26 @@ export async function* streamGenerate({ topic, platform, mode = 'generate', curr
     userMessage = `Adapte ce post pour ${capitalize(platform)} en respectant les conventions de cette plateforme (longueur, ton, structure) :\n\n${currentText}`
   }
 
+  // Génération à partir d'une image : Claude "voit" la photo et écrit dans la voix.
+  let content = userMessage
+  if (imageBase64 && (mode === 'generate' || mode === 'variations')) {
+    const sujet = topic && topic.trim() ? `, en lien avec : ${topic.trim()}` : ''
+    const ask = mode === 'variations'
+      ? `Rédige 3 versions différentes d'un post${platform ? ' pour ' + capitalize(platform) : ''} inspiré par cette image${sujet}. Laisse-toi porter par ce qu'elle évoque, son atmosphère, ce qu'elle invite à ressentir. Sépare les 3 versions par "---" sur sa propre ligne.`
+      : `Rédige un post${platform ? ' pour ' + capitalize(platform) : ''} inspiré par cette image${sujet}. Laisse-toi porter par ce qu'elle évoque, son atmosphère, ce qu'elle invite à ressentir — sans la décrire platement.`
+    content = [
+      { type: 'image', source: { type: 'base64', media_type: mimeType || 'image/jpeg', data: imageBase64 } },
+      { type: 'text', text: ask },
+    ]
+  }
+
   const stream = await client.messages.stream({
     model: 'claude-opus-4-8',
     max_tokens: 2000,
     cache_control: { type: 'ephemeral' }, // cache le system prompt (frozen prefix)
     system: SYSTEM_PROMPT,
     thinking: { type: 'disabled' }, // pas besoin de thinking pour de la rédaction
-    messages: [{ role: 'user', content: userMessage }],
+    messages: [{ role: 'user', content }],
   })
 
   for await (const event of stream) {

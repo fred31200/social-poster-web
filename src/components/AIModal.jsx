@@ -142,7 +142,9 @@ export default function AIModal({ open, onClose, onInsert, onAddImage, platform 
   const [textError, setTextError] = useState('')
   const [mode, setMode] = useState('generate')
   const [quickTopics, setQuickTopics] = useState(() => pickRandom(QUICK_TOPICS_POOL, 6)) // 6 idées tirées au hasard
+  const [textImage, setTextImage] = useState(null) // { base64, mimeType, preview } — écrire À PARTIR d'une image
   const textAbortRef = useRef(null)
+  const textFileRef = useRef(null)
 
   // ── Image state ──
   const [imgPrompt, setImgPrompt] = useState('')
@@ -165,6 +167,7 @@ export default function AIModal({ open, onClose, onInsert, onAddImage, platform 
       setTextError('')
       setMode('generate')
       setQuickTopics(pickRandom(QUICK_TOPICS_POOL, 6))
+      setTextImage(null)
       setImgPrompt('')
       setImgResults([])
       setImgError('')
@@ -208,6 +211,11 @@ export default function AIModal({ open, onClose, onInsert, onAddImage, platform 
         topic: topic.trim(),
         platform,
         currentText: customCurrentText ?? baseText,
+      }
+      // Écrire à partir d'une image : seulement pour une (re)génération de post.
+      if ((m === 'generate' || m === 'variations') && textImage) {
+        body.imageBase64 = textImage.base64
+        body.mimeType = textImage.mimeType
       }
       const r = await fetch('/api/ai/generate', {
         method: 'POST',
@@ -261,11 +269,8 @@ export default function AIModal({ open, onClose, onInsert, onAddImage, platform 
     }
   }
 
-  // ── Image de référence (img2img) : lecture + redimensionnement ──
-  function handleRefFile(e) {
-    const file = e.target.files?.[0]
-    if (!file) return
-    setImgError('')
+  // ── Lecture + redimensionnement (max 1024px) → { base64, mimeType, preview } ──
+  function readResizedImage(file, onReady, onErr) {
     const reader = new FileReader()
     reader.onload = () => {
       const img = new window.Image()
@@ -280,13 +285,29 @@ export default function AIModal({ open, onClose, onInsert, onAddImage, platform 
         canvas.width = width; canvas.height = height
         canvas.getContext('2d').drawImage(img, 0, 0, width, height)
         const dataUrl = canvas.toDataURL('image/jpeg', 0.9)
-        setRefImage({ base64: dataUrl.split(',')[1], mimeType: 'image/jpeg', preview: dataUrl })
+        onReady({ base64: dataUrl.split(',')[1], mimeType: 'image/jpeg', preview: dataUrl })
       }
-      img.onerror = () => setImgError('Image illisible — essaie un autre fichier')
+      img.onerror = () => onErr('Image illisible — essaie un autre fichier')
       img.src = reader.result
     }
-    reader.onerror = () => setImgError('Lecture du fichier impossible')
+    reader.onerror = () => onErr('Lecture du fichier impossible')
     reader.readAsDataURL(file)
+  }
+
+  // Image de référence (img2img, onglet Image)
+  function handleRefFile(e) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setImgError('')
+    readResizedImage(file, setRefImage, setImgError)
+  }
+
+  // Image source pour écrire un post (onglet Texte)
+  function handleTextRefFile(e) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setTextError('')
+    readResizedImage(file, setTextImage, setTextError)
   }
 
   // ── Image generation ──
@@ -485,6 +506,34 @@ export default function AIModal({ open, onClose, onInsert, onAddImage, platform 
                       )}
                     </div>
 
+                    {/* …ou écrire à partir d'une image */}
+                    <div>
+                      <input ref={textFileRef} type="file" accept="image/*" onChange={handleTextRefFile} className="hidden" />
+                      {textImage ? (
+                        <div className="relative rounded-xl overflow-hidden border border-sage-300">
+                          <img src={textImage.preview} alt="inspiration" className="w-full max-h-44 object-cover" />
+                          <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-warm-900/75 to-transparent px-3 py-2 flex items-center justify-between gap-2">
+                            <span className="text-[11px] text-white font-medium flex items-center gap-1.5">
+                              <ImageIcon size={12} /> J'écris en m'inspirant de cette image
+                            </span>
+                            <button
+                              onClick={() => { setTextImage(null); if (textFileRef.current) textFileRef.current.value = '' }}
+                              className="shrink-0 bg-warm-900/50 text-white rounded-full px-2.5 py-1 text-[11px] hover:bg-warm-900/70 transition-colors"
+                            >
+                              Retirer
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => textFileRef.current?.click()}
+                          className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border border-dashed border-warm-300 bg-warm-50 hover:border-sage-400 hover:bg-sage-50/60 text-warm-500 hover:text-sage-700 text-xs font-medium transition-colors"
+                        >
+                          <ImageIcon size={14} /> …ou écrire à partir d&apos;une image
+                        </button>
+                      )}
+                    </div>
+
                     <div>
                       <div className="flex items-center justify-between mb-2">
                         <p className="text-[10px] text-warm-400 uppercase tracking-wider font-semibold">Idées rapides</p>
@@ -511,15 +560,15 @@ export default function AIModal({ open, onClose, onInsert, onAddImage, platform 
                     <div className="flex gap-2 pt-2">
                       <button
                         onClick={() => runTextGeneration({ mode: 'generate' })}
-                        disabled={!topic.trim()}
+                        disabled={!topic.trim() && !textImage}
                         className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl font-semibold text-sm text-white bg-sage-600 hover:bg-sage-500 active:bg-sage-700 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-sm shadow-sage-500/20"
                       >
                         <Sparkles size={16} />
-                        Générer 1 post
+                        {textImage ? 'Écrire depuis l\'image' : 'Générer 1 post'}
                       </button>
                       <button
                         onClick={() => runTextGeneration({ mode: 'variations' })}
-                        disabled={!topic.trim()}
+                        disabled={!topic.trim() && !textImage}
                         className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl font-semibold text-sm text-sage-700 bg-sage-100 hover:bg-sage-200 active:bg-sage-300 disabled:opacity-40 disabled:cursor-not-allowed transition-all border border-sage-300"
                       >
                         <RefreshCw size={16} />
