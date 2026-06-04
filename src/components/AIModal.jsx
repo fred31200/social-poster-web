@@ -302,6 +302,30 @@ export default function AIModal({ open, onClose, onInsert, onAddImage, platform 
       return
     }
 
+    // Mode "depuis mon post" : Gemini illustre le post (image cohérente avec le texte)
+    if (imgSource === 'post') {
+      const postText = (generated.trim() || (currentText || '').trim())
+      if (!postText) { setImgError('Écris d\'abord un post à illustrer (onglet « Texte »)'); return }
+      setImgResults([])
+      setImgLoading(true)
+      try {
+        const r = await fetch('/api/ai/image-from-post', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ postText })
+        })
+        const data = await r.json()
+        if (!r.ok) setImgError(data.error || `Erreur ${r.status}`)
+        else if (data.urls?.length) setImgResults(data.urls)
+        else setImgError('Aucune image générée')
+      } catch (err) {
+        setImgError(err.message)
+      } finally {
+        setImgLoading(false)
+      }
+      return
+    }
+
     // Mode "rechercher une photo" (photos stock par mots-clés)
     if (!imgPrompt.trim()) return
     setImgResults([])
@@ -548,29 +572,60 @@ export default function AIModal({ open, onClose, onInsert, onAddImage, platform 
               <>
                 {imgResults.length === 0 && !imgLoading && (
                   <>
-                    {/* Sous-mode : rechercher une photo vs transformer une image */}
-                    <div className="grid grid-cols-2 gap-1.5">
+                    {/* Sous-mode : une photo stock / depuis le post / img2img */}
+                    <div className="grid grid-cols-3 gap-1.5">
                       <button
                         onClick={() => { setImgSource('search'); setImgError('') }}
-                        className={`flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-medium border transition-all ${
+                        className={`flex flex-col items-center justify-center gap-1 py-2.5 rounded-lg text-[10px] font-medium leading-tight text-center border transition-all ${
                           imgSource === 'search'
                             ? 'border-sage-500 bg-sage-100 text-sage-700'
                             : 'border-warm-200 bg-warm-50 text-warm-500 hover:border-warm-300'
                         }`}
                       >
-                        <ImageIcon size={14} /> Rechercher une photo
+                        <ImageIcon size={15} /> Une photo
+                      </button>
+                      <button
+                        onClick={() => { setImgSource('post'); setImgError('') }}
+                        className={`flex flex-col items-center justify-center gap-1 py-2.5 rounded-lg text-[10px] font-medium leading-tight text-center border transition-all ${
+                          imgSource === 'post'
+                            ? 'border-sage-500 bg-sage-100 text-sage-700'
+                            : 'border-warm-200 bg-warm-50 text-warm-500 hover:border-warm-300'
+                        }`}
+                      >
+                        <Sparkles size={15} /> Depuis mon post
                       </button>
                       <button
                         onClick={() => { setImgSource('edit'); setImgError('') }}
-                        className={`flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-medium border transition-all ${
+                        className={`flex flex-col items-center justify-center gap-1 py-2.5 rounded-lg text-[10px] font-medium leading-tight text-center border transition-all ${
                           imgSource === 'edit'
                             ? 'border-sage-500 bg-sage-100 text-sage-700'
                             : 'border-warm-200 bg-warm-50 text-warm-500 hover:border-warm-300'
                         }`}
                       >
-                        <Wand2 size={14} /> À partir d'une image
+                        <Wand2 size={15} /> À partir d'une image
                       </button>
                     </div>
+
+                    {/* Mode "depuis mon post" : aperçu du post à illustrer */}
+                    {imgSource === 'post' && (
+                      <div>
+                        <label className="block text-xs text-warm-500 uppercase tracking-wider font-semibold mb-2">
+                          Le post à illustrer
+                        </label>
+                        {(generated.trim() || (currentText || '').trim()) ? (
+                          <div className="bg-warm-50 border border-warm-200 rounded-xl px-4 py-3 text-[13px] text-warm-600 max-h-32 overflow-y-auto whitespace-pre-wrap leading-relaxed">
+                            {generated.trim() || (currentText || '').trim()}
+                          </div>
+                        ) : (
+                          <div className="bg-warm-50 border border-dashed border-warm-300 rounded-xl px-4 py-5 text-center text-xs text-warm-500">
+                            ✍️ Écris d'abord un post (onglet « Texte » ou dans le composer), puis reviens ici.
+                          </div>
+                        )}
+                        <p className="text-[10px] text-warm-400 mt-1.5">
+                          💡 L'IA crée une image qui colle au thème et à l'ambiance de ton post (powered by Gemini)
+                        </p>
+                      </div>
+                    )}
 
                     {/* Mode img2img : import de l'image de référence */}
                     {imgSource === 'edit' && (
@@ -602,25 +657,27 @@ export default function AIModal({ open, onClose, onInsert, onAddImage, platform 
                       </div>
                     )}
 
-                    <div>
-                      <label className="block text-xs text-warm-500 uppercase tracking-wider font-semibold mb-2">
-                        {imgSource === 'edit' ? 'Décris la transformation' : 'Décris l\'image que tu veux'}
-                      </label>
-                      <textarea
-                        value={imgPrompt}
-                        onChange={e => setImgPrompt(e.target.value)}
-                        placeholder={imgSource === 'edit'
-                          ? 'ex: ambiance spa zen, lumière dorée douce, ajoute des bougies et des galets…'
-                          : 'ex: huile de massage dorée versée sur des galets de bois clair…'}
-                        rows={3}
-                        className="w-full bg-warm-50 border border-warm-200 rounded-xl px-4 py-3 text-[15px] text-warm-700 placeholder-warm-400 outline-none focus:border-sage-500 transition-colors resize-none"
-                      />
-                      <p className="text-[10px] text-warm-400 mt-1.5">
-                        {imgSource === 'edit'
-                          ? '💡 L\'IA transforme ton image selon ta consigne (powered by Gemini)'
-                          : '💡 Tu peux écrire en français — un style « ambiance bien-être » est ajouté automatiquement'}
-                      </p>
-                    </div>
+                    {imgSource !== 'post' && (
+                      <div>
+                        <label className="block text-xs text-warm-500 uppercase tracking-wider font-semibold mb-2">
+                          {imgSource === 'edit' ? 'Décris la transformation' : 'Décris l\'image que tu veux'}
+                        </label>
+                        <textarea
+                          value={imgPrompt}
+                          onChange={e => setImgPrompt(e.target.value)}
+                          placeholder={imgSource === 'edit'
+                            ? 'ex: ambiance spa zen, lumière dorée douce, ajoute des bougies et des galets…'
+                            : 'ex: huile de massage dorée versée sur des galets de bois clair…'}
+                          rows={3}
+                          className="w-full bg-warm-50 border border-warm-200 rounded-xl px-4 py-3 text-[15px] text-warm-700 placeholder-warm-400 outline-none focus:border-sage-500 transition-colors resize-none"
+                        />
+                        <p className="text-[10px] text-warm-400 mt-1.5">
+                          {imgSource === 'edit'
+                            ? '💡 L\'IA transforme ton image selon ta consigne (powered by Gemini)'
+                            : '💡 Tu peux écrire en français — un style « ambiance bien-être » est ajouté automatiquement'}
+                        </p>
+                      </div>
+                    )}
 
                     {imgSource === 'search' && (
                       <>
@@ -665,11 +722,15 @@ export default function AIModal({ open, onClose, onInsert, onAddImage, platform 
 
                     <button
                       onClick={runImageGeneration}
-                      disabled={imgSource === 'edit' ? (!refImage || !imgPrompt.trim()) : !imgPrompt.trim()}
+                      disabled={
+                        imgSource === 'edit' ? (!refImage || !imgPrompt.trim())
+                        : imgSource === 'post' ? !(generated.trim() || (currentText || '').trim())
+                        : !imgPrompt.trim()
+                      }
                       className="w-full flex items-center justify-center gap-2 py-3 rounded-xl font-semibold text-sm text-white bg-sage-600 hover:bg-sage-500 active:bg-sage-700 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-sm shadow-sage-500/20"
                     >
                       {imgSource === 'edit' ? <Wand2 size={16} /> : <Sparkles size={16} />}
-                      {imgSource === 'edit' ? 'Transformer l\'image' : 'Générer 4 images'}
+                      {imgSource === 'edit' ? 'Transformer l\'image' : imgSource === 'post' ? 'Créer l\'image du post' : 'Générer 4 images'}
                     </button>
                   </>
                 )}
@@ -677,7 +738,7 @@ export default function AIModal({ open, onClose, onInsert, onAddImage, platform 
                 {imgLoading && (
                   <div className="flex flex-col items-center justify-center py-12 gap-3">
                     <Loader2 size={32} className="text-sage-600 animate-spin" />
-                    <p className="text-sm text-warm-500">{imgSource === 'edit' ? 'Gemini transforme ton image… (quelques secondes)' : 'Préparation…'}</p>
+                    <p className="text-sm text-warm-500">{imgSource === 'edit' ? 'Gemini transforme ton image… (quelques secondes)' : imgSource === 'post' ? 'Gemini crée ton image… (quelques secondes)' : 'Préparation…'}</p>
                   </div>
                 )}
 
@@ -708,7 +769,7 @@ export default function AIModal({ open, onClose, onInsert, onAddImage, platform 
                       className="w-full mt-3 flex items-center justify-center gap-2 py-2.5 rounded-xl font-semibold text-sm text-sage-700 bg-sage-100 hover:bg-sage-200 active:bg-sage-300 disabled:opacity-40 transition-all border border-sage-300"
                     >
                       <RefreshCw size={14} />
-                      {imgSource === 'edit' ? 'Transformer à nouveau' : 'Générer 4 autres'}
+                      {imgSource === 'edit' ? 'Transformer à nouveau' : imgSource === 'post' ? 'Créer une autre image' : 'Générer 4 autres'}
                     </button>
                   </div>
                 )}
