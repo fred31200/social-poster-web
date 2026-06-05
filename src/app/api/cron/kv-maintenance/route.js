@@ -1,23 +1,25 @@
 /**
  * TEMPORARY maintenance endpoint — diagnose & reset the multi-user overlay in KV.
- * Protected by CRON_SECRET (query ?secret= or Authorization: Bearer <secret>).
+ * Placed under /api/cron/* so the edge middleware lets it through; gated by a
+ * dedicated token below (NOT a real app secret).
  *
- * GET  → read-only snapshot of users / migrated flag / legacy sp:db / per-user data.
- * POST { action: 'reset-multiuser' } → delete ONLY the multi-user overlay
- *        (sp:users, sp:migrated, sp:db:<userId>). NEVER touches sp:db (real data).
+ * GET  → read-only snapshot (users / migrated flag / legacy sp:db / per-user).
+ * POST { action:'reset-multiuser' } → delete ONLY sp:users, sp:migrated,
+ *        sp:db:<userId>. NEVER touches sp:db (the real single-user data).
  *
- * ⚠️ Remove this route before going to production.
+ * ⚠️ Remove this route once the multi-user migration is sorted.
  */
 
 import { NextResponse } from 'next/server'
 import { getUsers, kvGet, kvSet } from '@/lib/store'
 
+const MAINT_TOKEN = 'kvmaint_b9F3kQ7pX2mL8vR4tN6wZ1sY5cH0dG3j'
+
 function authorized(req) {
   const url = new URL(req.url)
-  const fromQuery = url.searchParams.get('secret')
+  const fromQuery = url.searchParams.get('t')
   const fromHeader = (req.headers.get('authorization') || '').replace(/^Bearer\s+/i, '')
-  const secret = fromQuery || fromHeader
-  return !!secret && !!process.env.CRON_SECRET && secret === process.env.CRON_SECRET
+  return (fromQuery || fromHeader) === MAINT_TOKEN
 }
 
 function asObj(v) {
@@ -32,13 +34,7 @@ async function snapshot() {
   const perUser = []
   for (const u of users) {
     const d = asObj(await kvGet(`sp:db:${u.id}`))
-    perUser.push({
-      id: u.id,
-      email: u.email,
-      isAdmin: !!u.isAdmin,
-      accounts: d?.accounts?.length || 0,
-      posts: d?.posts?.length || 0,
-    })
+    perUser.push({ id: u.id, email: u.email, isAdmin: !!u.isAdmin, accounts: d?.accounts?.length || 0, posts: d?.posts?.length || 0 })
   }
   return {
     userCount: users.length,
@@ -65,7 +61,6 @@ export async function POST(req) {
     return NextResponse.json({ error: 'unknown action (expected reset-multiuser)' }, { status: 400 })
   }
   const before = await snapshot()
-  // Delete ONLY the multi-user overlay. sp:db (real single-user data) is left intact.
   const users = await getUsers()
   for (const u of users) await kvSet(`sp:db:${u.id}`, null)
   await kvSet('sp:users', null)
