@@ -9,6 +9,11 @@ import Calendar from './screens/Calendar'
 import History from './screens/History'
 import Replies from './screens/Replies'
 import Inbox from './screens/Inbox'
+import Invitations from './screens/Invitations'
+import AdminUsers from './screens/AdminUsers'
+import AdminStats from './screens/AdminStats'
+import AdminAudit from './screens/AdminAudit'
+import UserSettings from './screens/UserSettings'
 import Toast from './components/Toast'
 import { api } from './lib/api'
 
@@ -16,12 +21,31 @@ export default function App() {
   const [page, setPage] = useState('composer')
   const [toasts, setToasts] = useState([])
   const [accounts, setAccounts] = useState([])
+  const [currentUser, setCurrentUser] = useState(null)
   const [drawerOpen, setDrawerOpen] = useState(false)
-  const [metaSession, setMetaSession] = useState(null) // { pages, token, instagramOnly }
+  const [inboxCount, setInboxCount] = useState(0)
+  const [darkMode, setDarkMode] = useState(false)
+
+  useEffect(() => {
+    const saved = typeof window !== 'undefined' ? localStorage.getItem('sp-theme') : null
+    const isDark = saved === 'dark'
+    setDarkMode(isDark)
+    document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light')
+  }, [])
+
+  function toggleDarkMode() {
+    const next = !darkMode
+    setDarkMode(next)
+    document.documentElement.setAttribute('data-theme', next ? 'dark' : 'light')
+    localStorage.setItem('sp-theme', next ? 'dark' : 'light')
+  }
+  const [metaSession, setMetaSession] = useState(null)
 
   useEffect(() => {
     loadAccounts()
+    loadCurrentUser()
     handleOAuthRedirect()
+    loadInboxCount()
   }, [])
 
   async function loadAccounts() {
@@ -29,14 +53,37 @@ export default function App() {
     setAccounts(data || [])
   }
 
-  // Reads ?oauth=... query params set by the OAuth callback redirect
+  async function loadInboxCount() {
+    try {
+      const r = await fetch('/api/inbox/count')
+      if (r.ok) { const d = await r.json(); setInboxCount(d.pending || 0) }
+    } catch {}
+  }
+
+  async function loadCurrentUser() {
+    try {
+      const r = await fetch('/api/auth/me')
+      if (r.ok) {
+        setCurrentUser(await r.json())
+      } else if (r.status === 401) {
+        window.location.href = '/login'
+      } else if (r.status === 403) {
+        window.location.href = '/login?error=compte-desactive'
+      } else {
+        const err = await r.json().catch(() => ({}))
+        console.error('[loadCurrentUser]', r.status, err)
+      }
+    } catch (e) {
+      console.error('[loadCurrentUser]', e)
+    }
+  }
+
   async function handleOAuthRedirect() {
     if (typeof window === 'undefined') return
     const url = new URL(window.location.href)
     const oauth = url.searchParams.get('oauth')
     if (!oauth) return
 
-    // Clean URL right away so a reload doesn't re-trigger
     url.searchParams.delete('oauth')
     const platform = url.searchParams.get('platform'); url.searchParams.delete('platform')
     const name     = url.searchParams.get('name');     url.searchParams.delete('name')
@@ -69,43 +116,42 @@ export default function App() {
 
   return (
     <div className="flex h-[100dvh] bg-ivory-100 text-warm-700 overflow-hidden">
-      {/* Desktop sidebar (hidden on mobile) */}
       <div className="hidden md:flex">
-        <Sidebar currentPage={page} setPage={setPage} accounts={accounts} />
+        <Sidebar currentPage={page} setPage={setPage} accounts={accounts} currentUser={currentUser} inboxCount={inboxCount} darkMode={darkMode} onToggleDark={toggleDarkMode} />
       </div>
 
-      {/* Mobile drawer (hidden on desktop) */}
       <MobileDrawer
         open={drawerOpen}
         onClose={() => setDrawerOpen(false)}
         currentPage={page}
         setPage={setPage}
         accounts={accounts}
+        currentUser={currentUser}
+        inboxCount={inboxCount}
       />
 
       <main className="flex-1 flex flex-col overflow-hidden bg-ivory-50">
-        {/* Mobile header with hamburger */}
         <MobileHeader
           accounts={accounts}
           currentPage={page}
           onOpenMenu={() => setDrawerOpen(true)}
         />
 
-        {/* Page content with safe-area padding for iOS */}
-        <div
-          className="flex-1 overflow-y-auto"
-          style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
-        >
-          {page === 'composer' && <Composer {...pageProps} />}
-          {page === 'accounts' && <Accounts {...pageProps} />}
-          {page === 'queue' && <Calendar {...pageProps} />}
-          {page === 'history' && <History {...pageProps} />}
-          {page === 'replies' && <Replies {...pageProps} />}
-          {page === 'inbox' && <Inbox {...pageProps} />}
+        <div className="flex-1 overflow-y-auto" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
+          {page === 'composer'     && <Composer {...pageProps} />}
+          {page === 'accounts'     && <Accounts {...pageProps} />}
+          {page === 'queue'        && <Calendar {...pageProps} />}
+          {page === 'history'      && <History {...pageProps} />}
+          {page === 'replies'      && <Replies {...pageProps} />}
+          {page === 'inbox'        && <Inbox {...pageProps} />}
+          {page === 'invitations'  && <Invitations addToast={addToast} />}
+          {page === 'admin-users'  && <AdminUsers addToast={addToast} />}
+          {page === 'admin-stats'  && <AdminStats addToast={addToast} />}
+          {page === 'admin-audit'  && <AdminAudit addToast={addToast} />}
+          {page === 'settings'     && <UserSettings currentUser={currentUser} addToast={addToast} />}
         </div>
       </main>
 
-      {/* Toasts */}
       <div className="fixed bottom-6 right-4 md:right-6 left-4 md:left-auto flex flex-col gap-2 z-50 pointer-events-none">
         {toasts.map(t => (
           <div key={t.id} className="pointer-events-auto">

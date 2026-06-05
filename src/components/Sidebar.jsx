@@ -1,5 +1,5 @@
 'use client'
-import { PenSquare, Users, Clock, History, Leaf, LogOut, MessageSquareReply, Inbox } from 'lucide-react'
+import { PenSquare, Users, Clock, History, Leaf, LogOut, MessageSquareReply, Inbox, Shield, Settings, BarChart2, ScrollText, Moon, Sun } from 'lucide-react'
 
 async function handleLogout() {
   await fetch('/api/auth/logout', { method: 'POST' })
@@ -16,12 +16,7 @@ const PLATFORM_COLORS = {
 }
 
 const PLATFORM_ICONS = {
-  instagram: '📸',
-  facebook: '📘',
-  linkedin: '💼',
-  tiktok: '🎵',
-  threads: '🧵',
-  meta: '🔵',
+  instagram: '📸', facebook: '📘', linkedin: '💼', tiktok: '🎵', threads: '🧵', meta: '🔵',
 }
 
 const NAV = [
@@ -33,10 +28,9 @@ const NAV = [
   { id: 'accounts', label: 'Comptes', icon: Users },
 ]
 
-export default function Sidebar({ currentPage, setPage, accounts }) {
+export default function Sidebar({ currentPage, setPage, accounts, currentUser, inboxCount = 0, darkMode = false, onToggleDark }) {
   return (
     <aside className="w-64 flex flex-col bg-cream border-r border-warm-200 pt-8 pb-4 select-none" style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}>
-      {/* Logo — pissenlit / sauge */}
       <div className="px-5 mb-8">
         <div className="flex items-center gap-2.5">
           <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-sage-300 to-sage-500 flex items-center justify-center shadow-sm">
@@ -44,44 +38,95 @@ export default function Sidebar({ currentPage, setPage, accounts }) {
           </div>
           <div>
             <h1 className="text-warm-700 font-semibold text-[15px] leading-tight">Social Poster</h1>
-            <p className="text-warm-500 text-xs">Aux graines du bien-être</p>
+            <p className="text-warm-500 text-xs truncate max-w-[130px]">{currentUser?.email || 'Aux graines du bien-être'}</p>
           </div>
         </div>
       </div>
 
-      {/* Navigation */}
       <nav className="flex-1 px-3 space-y-1">
         {NAV.map(({ id, label, icon: Icon }) => {
           const active = currentPage === id
+          const badge = id === 'inbox' && inboxCount > 0
           return (
-            <button
-              key={id}
-              onClick={() => setPage(id)}
+            <button key={id} onClick={() => setPage(id)}
               className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${
-                active
-                  ? 'bg-sage-100 text-sage-800 border border-sage-200'
-                  : 'text-warm-500 hover:text-warm-700 hover:bg-warm-100'
+                active ? 'bg-sage-100 text-sage-800 border border-sage-200' : 'text-warm-500 hover:text-warm-700 hover:bg-warm-100'
               }`}
             >
               <Icon size={17} strokeWidth={1.8} />
               {label}
+              {badge && <span className="ml-auto bg-[#B07060] text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center">{inboxCount > 99 ? '99+' : inboxCount}</span>}
             </button>
           )
         })}
+
+        {/* Settings for all users */}
+        <button onClick={() => setPage('settings')}
+          className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${
+            currentPage === 'settings' ? 'bg-sage-100 text-sage-800 border border-sage-200' : 'text-warm-500 hover:text-warm-700 hover:bg-warm-100'
+          }`}
+        >
+          <Settings size={17} strokeWidth={1.8} />
+          Réglages
+        </button>
+
+        {/* Admin section */}
+        {currentUser?.isAdmin && (
+          <>
+            <div className="pt-3 pb-1">
+              <p className="text-[10px] text-warm-400 uppercase tracking-wider px-3 font-semibold">Admin</p>
+            </div>
+            <button onClick={() => setPage('invitations')}
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${
+                currentPage === 'invitations' ? 'bg-sage-100 text-sage-800 border border-sage-200' : 'text-warm-500 hover:text-warm-700 hover:bg-warm-100'
+              }`}
+            >
+              <Shield size={17} strokeWidth={1.8} />
+              Invitations
+            </button>
+            <button onClick={() => setPage('admin-users')}
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${
+                currentPage === 'admin-users' ? 'bg-sage-100 text-sage-800 border border-sage-200' : 'text-warm-500 hover:text-warm-700 hover:bg-warm-100'
+              }`}
+            >
+              <Users size={17} strokeWidth={1.8} />
+              Utilisateurs
+            </button>
+            <button onClick={() => setPage('admin-stats')}
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${
+                currentPage === 'admin-stats' ? 'bg-sage-100 text-sage-800 border border-sage-200' : 'text-warm-500 hover:text-warm-700 hover:bg-warm-100'
+              }`}
+            >
+              <BarChart2 size={17} strokeWidth={1.8} />
+              Statistiques
+            </button>
+            <button onClick={() => setPage('admin-audit')}
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${
+                currentPage === 'admin-audit' ? 'bg-sage-100 text-sage-800 border border-sage-200' : 'text-warm-500 hover:text-warm-700 hover:bg-warm-100'
+              }`}
+            >
+              <ScrollText size={17} strokeWidth={1.8} />
+              Journal
+            </button>
+          </>
+        )}
       </nav>
 
-      {/* Logout button */}
-      <div className="px-3 pt-3">
-        <button
-          onClick={handleLogout}
-          className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-warm-500 hover:text-warm-700 hover:bg-warm-100 transition-colors"
-        >
+      <div className="px-3 pt-3 space-y-1">
+        {onToggleDark && (
+          <button onClick={onToggleDark}
+            className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-warm-500 hover:text-warm-700 hover:bg-warm-100 transition-colors">
+            {darkMode ? <Sun size={16} strokeWidth={1.8} /> : <Moon size={16} strokeWidth={1.8} />}
+            {darkMode ? 'Mode clair' : 'Mode sombre'}
+          </button>
+        )}
+        <button onClick={handleLogout}
+          className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-warm-500 hover:text-warm-700 hover:bg-warm-100 transition-colors">
           <LogOut size={16} strokeWidth={1.8} />
           Déconnexion
         </button>
       </div>
 
-      {/* Connected accounts */}
       <div className="px-4 pt-4 border-t border-warm-200">
         <p className="text-[10px] text-warm-400 uppercase tracking-wider mb-3 font-semibold">Comptes connectés</p>
         {accounts.length === 0 ? (

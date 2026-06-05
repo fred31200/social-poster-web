@@ -1,6 +1,6 @@
 'use client'
 import { useState, useRef, useEffect } from 'react'
-import { Image, Video, X, Send, CalendarClock, Loader2, AlertCircle, Square, RectangleVertical, RectangleHorizontal, Maximize, Sparkles } from 'lucide-react'
+import { Image, Video, X, Send, CalendarClock, Loader2, AlertCircle, Square, RectangleVertical, RectangleHorizontal, Maximize, Sparkles, Eye } from 'lucide-react'
 import { format, addMinutes } from 'date-fns'
 import { fr } from 'date-fns/locale'
 import AIModal from '@/components/AIModal'
@@ -18,9 +18,46 @@ const PLATFORMS = [
   { id: 'linkedin', label: 'LinkedIn', emoji: '💼', requiresMedia: false },
   { id: 'tiktok', label: 'TikTok', emoji: '🎵', requiresMedia: true, note: 'Vidéo/image requis' },
   { id: 'threads', label: 'Threads', emoji: '🧵', requiresMedia: false, note: 'Texte seulement (max 500)' },
+  { id: 'telegram', label: 'Telegram', emoji: '✈️', requiresMedia: false },
+  { id: 'pinterest', label: 'Pinterest', emoji: '📌', requiresMedia: true, note: 'Image requise' },
+  { id: 'bluesky', label: 'Bluesky', emoji: '🦋', requiresMedia: false, note: 'Max 300 car.' },
+  { id: 'mastodon', label: 'Mastodon', emoji: '🐘', requiresMedia: false, note: 'Max 500 car.' },
 ]
 
-const MAX_CHARS = { instagram: 2200, facebook: 63206, linkedin: 3000, tiktok: 150, threads: 500 }
+const MAX_CHARS = { instagram: 2200, facebook: 63206, linkedin: 3000, tiktok: 150, threads: 500, telegram: 4096, pinterest: 500, bluesky: 300, mastodon: 500 }
+
+function PreviewModal({ content, platforms, onClose }) {
+  const PLATFORM_NAMES = { facebook: 'Facebook', instagram: 'Instagram', linkedin: 'LinkedIn', threads: 'Threads', tiktok: 'TikTok' }
+  return (
+    <div className="fixed inset-0 bg-warm-800/50 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={onClose}>
+      <div className="bg-cream border border-warm-200 rounded-2xl p-5 w-full max-w-md shadow-xl max-h-[80vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-sm font-semibold text-warm-700">Aperçu</h3>
+          <button onClick={onClose} className="text-warm-400 hover:text-warm-600"><X size={16} /></button>
+        </div>
+        <div className="space-y-4">
+          {platforms.map(p => {
+            const max = MAX_CHARS[p] || 99999
+            const len = (content || '').length
+            const over = len > max
+            return (
+              <div key={p} className="bg-warm-50 border border-warm-200 rounded-xl p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-xs font-semibold text-warm-600">{PLATFORM_NAMES[p] || p}</p>
+                  <span className={`text-[10px] font-mono ${over ? 'text-red-500 font-bold' : 'text-warm-400'}`}>{len}/{max}</span>
+                </div>
+                <p className="text-sm text-warm-700 whitespace-pre-wrap leading-relaxed">
+                  {over ? content.slice(0, max) : content}
+                </p>
+                {over && <p className="text-[10px] text-red-500 mt-2">⚠ {len - max} caractères en trop — sera tronqué</p>}
+              </div>
+            )
+          })}
+        </div>
+      </div>
+    </div>
+  )
+}
 
 export default function Composer({ accounts, addToast }) {
   const [content, setContent] = useState('')
@@ -33,6 +70,7 @@ export default function Composer({ accounts, addToast }) {
   const [publishing, setPublishing] = useState(false)
   const [results, setResults] = useState(null)
   const [aiOpen, setAiOpen] = useState(false)
+  const [previewOpen, setPreviewOpen] = useState(false)
 
   const connectedPlatforms = [...new Set(accounts.map(a => a.platform))]
 
@@ -231,6 +269,16 @@ export default function Composer({ accounts, addToast }) {
         <h2 className="text-lg md:text-xl font-bold text-warm-700 mb-0.5 md:mb-1 hidden md:block">Nouveau post</h2>
         <p className="text-sm text-warm-500 mb-4 md:mb-6 hidden md:block">Publie sur toutes tes plateformes en un clic</p>
 
+        {/* Onboarding — shown only when no accounts connected */}
+        {accounts.length === 0 && (
+          <div className="mb-5 p-4 bg-sage-50 border border-sage-200 rounded-xl">
+            <p className="text-sm font-semibold text-sage-800 mb-1">Bienvenue 🌿</p>
+            <p className="text-xs text-sage-700 leading-relaxed">
+              Pour publier, commence par connecter tes réseaux sociaux dans <strong>Comptes</strong>, puis reviens ici pour composer ton premier post.
+            </p>
+          </div>
+        )}
+
         {/* Platform selector */}
         <div className="mb-4 md:mb-5">
           <p className="text-[10px] md:text-xs text-warm-500 uppercase tracking-wider font-semibold mb-2 md:mb-3">Plateformes</p>
@@ -284,6 +332,15 @@ export default function Composer({ accounts, addToast }) {
               >
                 <Sparkles size={14} /> Générer avec IA
               </button>
+              {content && selectedPlatforms.length > 0 && (
+                <>
+                  <span className="text-warm-300">·</span>
+                  <button onClick={() => setPreviewOpen(true)}
+                    className="flex items-center gap-1.5 text-xs text-warm-500 hover:text-sage-600 transition-colors">
+                    <Eye size={13} /> Aperçu
+                  </button>
+                </>
+              )}
               <span className="text-warm-300">·</span>
               <button
                 onClick={handlePickMedia}
@@ -317,6 +374,7 @@ export default function Composer({ accounts, addToast }) {
           currentText={content}
         />
 
+        {previewOpen && <PreviewModal content={content} platforms={selectedPlatforms} onClose={() => setPreviewOpen(false)} />}
 
         {/* Media preview */}
         {mediaFiles.length > 0 && (

@@ -1,7 +1,6 @@
 /**
- * Auth proxy (formerly middleware) — runs on every request before reaching pages or API routes.
- *
- * Renamed to proxy.js for Next.js 16 compliance (the middleware convention is deprecated).
+ * Auth proxy — runs on every request before reaching pages or API routes.
+ * Next.js 16+ convention: file named proxy.js, export named proxy.
  *
  * Strategy (Edge-friendly):
  *  - Public routes (login page, login API, cron endpoints, static assets): pass through
@@ -15,9 +14,15 @@ import { AUTH_COOKIE_NAME } from '@/lib/auth-edge'
 
 const PUBLIC_PATHS = [
   '/login',
+  '/signup',
+  '/forgot-password',
+  '/reset-password',
   '/api/auth/login',
   '/api/auth/setup',
+  '/api/auth/signup',
   '/api/auth/status',
+  '/api/auth/forgot',
+  '/api/auth/reset',
   '/api/health',
   '/api/cron', // protected by CRON_SECRET env var instead of cookie
 ]
@@ -29,16 +34,14 @@ function isPublicPath(pathname) {
 export function proxy(req) {
   const { pathname } = req.nextUrl
 
-  // Static assets (Next.js handles _next automatically but be explicit)
   if (pathname.startsWith('/_next') || pathname.startsWith('/favicon')) return NextResponse.next()
   if (isPublicPath(pathname)) return NextResponse.next()
 
-  // Explicit cron path bypass — protected by CRON_SECRET in the route itself
   if (pathname.startsWith('/api/cron/') || pathname === '/api/cron') {
     return NextResponse.next()
   }
 
-  // CRON_SECRET bearer bypass — allows Vercel Cron to call any API with the secret
+  // CRON_SECRET bearer bypass — allows Vercel Cron / cron-job.org to call API routes
   const cronSecret = process.env.CRON_SECRET
   if (cronSecret) {
     const auth = req.headers.get('authorization') || ''
@@ -49,11 +52,9 @@ export function proxy(req) {
 
   const cookie = req.cookies.get(AUTH_COOKIE_NAME)
   if (cookie && cookie.value && cookie.value.length > 10) {
-    // Cookie present → let request through. API routes still verify cryptographically.
     return NextResponse.next()
   }
 
-  // No cookie → redirect to /login (for pages) or 401 (for API)
   if (pathname.startsWith('/api/')) {
     return new NextResponse(JSON.stringify({ error: 'Non authentifié' }), {
       status: 401,
@@ -68,7 +69,6 @@ export function proxy(req) {
 
 export const config = {
   matcher: [
-    // All routes except static files and favicon
     '/((?!_next/static|_next/image|favicon.ico).*)',
   ],
 }

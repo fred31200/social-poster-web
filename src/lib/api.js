@@ -55,8 +55,8 @@ export const api = {
   // For web: returns { url } that the frontend redirects window.location.href to.
   // After OAuth, the platform redirects to /api/oauth/callback which saves the account
   // and redirects to / with ?oauth=success or ?oauth=meta-select&session=...
-  startOAuth: async ({ platform }) => {
-    const r = await safe(postJson('/api/oauth/start', { platform }))
+  startOAuth: async ({ platform, ...extra }) => {
+    const r = await safe(postJson('/api/oauth/start', { platform, ...extra }))
     if (r.error) return r
     // Redirect the whole window — this is the right flow for web OAuth
     window.location.href = r.url

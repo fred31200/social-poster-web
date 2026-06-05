@@ -35,57 +35,66 @@
   --color-warm-800: #2C2620;
 }
 
+/* ─── Dark mode overrides (via data-theme="dark" on <html>) ─── */
+[data-theme="dark"] {
+  --color-ivory-50:  #1A1714;
+  --color-ivory-100: #1E1B18;
+  --color-ivory-200: #252220;
+  --color-cream:     #232019;
+
+  --color-warm-50:  #1E1B18;
+  --color-warm-100: #252220;
+  --color-warm-200: #302C28;
+  --color-warm-300: #3E3930;
+  --color-warm-400: #5C5550;
+  --color-warm-500: #9B9390;
+  --color-warm-600: #C5BCB5;
+  --color-warm-700: #E8E3DC;
+  --color-warm-800: #FAF7F2;
+
+  --color-sage-100: #1E2B1C;
+  --color-sage-200: #263524;
+}
+
 html {
-  color-scheme: light only;   /* Block iOS/Android dark mode override */
+  color-scheme: light;
   -webkit-text-size-adjust: 100%;
+}
+[data-theme="dark"] {
+  color-scheme: dark;
 }
 
 html, body {
-  background: #FAF7F2 !important;
-  color: #3D352E !important;
+  background: var(--color-ivory-100, #FAF7F2) !important;
+  color: var(--color-warm-700, #3D352E) !important;
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   min-height: 100vh;
 }
 
-/* Force-disable dark mode on inputs/textarea (iOS Safari ignores color-scheme alone) */
 input, textarea, select, button {
-  color-scheme: light only;
+  color-scheme: inherit;
   -webkit-text-fill-color: inherit;
 }
 
-/* Soft natural scrollbars */
 ::-webkit-scrollbar { width: 8px; height: 8px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb {
-  background: rgba(124, 114, 106, 0.2);
-  border-radius: 8px;
-}
+::-webkit-scrollbar-thumb { background: rgba(124, 114, 106, 0.2); border-radius: 8px; }
 ::-webkit-scrollbar-thumb:hover { background: rgba(124, 114, 106, 0.35); }
 
-/* Smooth focus ring matching sage palette */
-*:focus-visible {
-  outline: 2px solid #8BA888;
-  outline-offset: 2px;
-  border-radius: 4px;
-}
-
-/* Selection */
+*:focus-visible { outline: 2px solid #8BA888; outline-offset: 2px; border-radius: 4px; }
 ::selection { background: rgba(212, 185, 120, 0.35); color: #3D352E; }
 
-/* Force visibility of native date/time inputs on iOS Safari + Chrome mobile */
 .datetime-input {
-  -webkit-text-fill-color: #3D352E; /* Safari: force text color */
-  color: #3D352E;
-  color-scheme: light;               /* Use light-theme native picker */
-  min-height: 48px;                  /* Touch target */
+  -webkit-text-fill-color: inherit;
+  color: inherit;
+  color-scheme: light;
+  min-height: 48px;
   font-family: inherit;
   appearance: none;
   -webkit-appearance: none;
 }
-
-/* The visible text inside the input (date/time fields) */
 .datetime-input::-webkit-datetime-edit,
 .datetime-input::-webkit-datetime-edit-fields-wrapper,
 .datetime-input::-webkit-datetime-edit-text,
@@ -94,17 +103,13 @@ input, textarea, select, button {
 .datetime-input::-webkit-datetime-edit-year-field,
 .datetime-input::-webkit-datetime-edit-hour-field,
 .datetime-input::-webkit-datetime-edit-minute-field {
-  color: #3D352E;
-  -webkit-text-fill-color: #3D352E;
+  color: inherit;
+  -webkit-text-fill-color: inherit;
   font-weight: 500;
 }
-
-/* The calendar icon at the right */
 .datetime-input::-webkit-calendar-picker-indicator {
   cursor: pointer;
   opacity: 0.7;
-  filter: invert(35%) sepia(15%) saturate(500%) hue-rotate(330deg);  /* tint to warm-700 */
+  filter: invert(35%) sepia(15%) saturate(500%) hue-rotate(330deg);
 }
-.datetime-input::-webkit-calendar-picker-indicator:hover {
-  opacity: 1;
-}
+.datetime-input::-webkit-calendar-picker-indicator:hover { opacity: 1; }

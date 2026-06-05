@@ -1,27 +1,45 @@
 /**
- * Temporary in-memory store for OAuth flows that need a second step
- * (e.g. Meta: after OAuth we get a list of pages, user picks one before account is saved).
- *
- * In-memory is fine for a single-user solo app. For multi-user we'd use Vercel KV.
+ * OAuth session store — uses KV in production (Vercel), in-memory fallback in dev.
+ * Prevents losing Meta page-selection sessions on Vercel cold starts.
  */
 
-const pendingMetaPages = new Map()
-const TTL_MS = 30 * 60 * 1000 // 30 minutes
+import { kvGet, kvSet, isUsingKV } from './store'
 
-export function stashMetaSession(data) {
-  // Random session id
+const TTL_MS = 30 * 60 * 1000 // 30 minutes
+const _memStore = new Map() // dev fallback
+
+function sessionKey(id) { return `sp:oauth:${id}` }
+
+export async function stashMetaSession(data) {
   const id = Date.now().toString(36) + Math.random().toString(36).slice(2, 8)
-  pendingMetaPages.set(id, { ...data, expiresAt: Date.now() + TTL_MS })
+  const entry = { ...data, expiresAt: Date.now() + TTL_MS }
+  if (isUsingKV()) {
+    await kvSet(sessionKey(id), entry)
+  } else {
+    _memStore.set(id, entry)
+  }
   return id
 }
 
-export function getMetaSession(id) {
-  const entry = pendingMetaPages.get(id)
+export async function getMetaSession(id) {
+  let entry
+  if (isUsingKV()) {
+    entry = await kvGet(sessionKey(id))
+  } else {
+    entry = _memStore.get(id) || null
+  }
   if (!entry) return null
-  if (entry.expiresAt < Date.now()) { pendingMetaPages.delete(id); return null }
+  if (entry.expiresAt < Date.now()) {
+    clearMetaSession(id)
+    return null
+  }
   return entry
 }
 
 export function clearMetaSession(id) {
-  pendingMetaPages.delete(id)
+  if (isUsingKV()) {
+    kvSet(sessionKey(id), null).catch(() => {})
+  } else {
+    _memStore.delete(id)
+  }
 }
