@@ -53,6 +53,20 @@ function pickRandom(arr, n) {
   return [...arr].sort(() => Math.random() - 0.5).slice(0, n)
 }
 
+// Idées rapides déjà utilisées pour générer un post → mémorisées (par navigateur)
+// pour ne PLUS JAMAIS les reproposer dans la sélection.
+const USED_TOPICS_KEY = 'sp_used_quick_topics'
+function loadUsedTopics() {
+  if (typeof window === 'undefined') return []
+  try { return JSON.parse(localStorage.getItem(USED_TOPICS_KEY) || '[]') } catch { return [] }
+}
+function saveUsedTopics(arr) {
+  try { localStorage.setItem(USED_TOPICS_KEY, JSON.stringify(arr)) } catch {}
+}
+function pickFreshTopics(n, used) {
+  return pickRandom(QUICK_TOPICS_POOL.filter(t => !used.includes(t)), n)
+}
+
 const REFINE_ACTIONS = [
   { id: 'shorter',     label: 'Plus court',  icon: Scissors },
   { id: 'longer',      label: 'Plus long',   icon: Maximize2 },
@@ -152,7 +166,8 @@ export default function AIModal({ open, onClose, onInsert, onAddImage, platform 
   const [textLoading, setTextLoading] = useState(false)
   const [textError, setTextError] = useState('')
   const [mode, setMode] = useState('generate')
-  const [quickTopics, setQuickTopics] = useState(() => pickRandom(QUICK_TOPICS_POOL, 6)) // 6 idées tirées au hasard
+  const [usedTopics, setUsedTopics] = useState(() => loadUsedTopics()) // idées déjà utilisées (persistées par navigateur)
+  const [quickTopics, setQuickTopics] = useState(() => pickFreshTopics(6, loadUsedTopics())) // 6 idées fraîches (jamais utilisées)
   const [textImage, setTextImage] = useState(null) // { base64, mimeType, preview } — écrire À PARTIR d'une image
   const textAbortRef = useRef(null)
   const textFileRef = useRef(null)
@@ -181,7 +196,8 @@ export default function AIModal({ open, onClose, onInsert, onAddImage, platform 
       setGenerated('')
       setTextError('')
       setMode('generate')
-      setQuickTopics(pickRandom(QUICK_TOPICS_POOL, 6))
+      setUsedTopics(loadUsedTopics())
+      setQuickTopics(pickFreshTopics(6, loadUsedTopics()))
       setTextImage(null)
       setCopied(false)
       setCopiedImgIdx(null)
@@ -210,8 +226,23 @@ export default function AIModal({ open, onClose, onInsert, onAddImage, platform 
   }, [open, textLoading, imgLoading, onClose])
 
   // ── Text generation ──
+  // Marque une idée rapide comme « utilisée » : retirée de l'affichage + mémorisée (plus jamais reproposée).
+  function markQuickTopicUsed(t) {
+    const s = (t || '').trim()
+    if (!s || !QUICK_TOPICS_POOL.includes(s)) return
+    setUsedTopics(prev => {
+      if (prev.includes(s)) return prev
+      const next = [...prev, s]
+      saveUsedTopics(next)
+      return next
+    })
+    setQuickTopics(prev => prev.filter(x => x !== s))
+  }
+
   async function runTextGeneration({ mode: m, customCurrentText }) {
     setTextError('')
+    // Si on génère un post à partir d'une idée rapide, on ne la reproposera plus.
+    if (m === 'generate' || m === 'variations') markQuickTopicUsed(topic)
     // Mode "hashtags" : on AJOUTE les hashtags sous le post existant au lieu de
     // le remplacer (sinon on perdait le post généré).
     const isHashtags = m === 'hashtags'
@@ -607,23 +638,35 @@ export default function AIModal({ open, onClose, onInsert, onAddImage, platform 
                       <div className="flex items-center justify-between mb-2">
                         <p className="text-[10px] text-warm-400 uppercase tracking-wider font-semibold">Idées rapides</p>
                         <button
-                          onClick={() => setQuickTopics(pickRandom(QUICK_TOPICS_POOL, 6))}
+                          onClick={() => setQuickTopics(pickFreshTopics(6, loadUsedTopics()))}
                           className="flex items-center gap-1 text-[10px] text-sage-600 hover:text-sage-700 font-medium transition-colors"
                         >
                           <RefreshCw size={11} /> Autres idées
                         </button>
                       </div>
-                      <div className="flex flex-wrap gap-1.5">
-                        {quickTopics.map((t, i) => (
+                      {quickTopics.length > 0 ? (
+                        <div className="flex flex-wrap gap-1.5">
+                          {quickTopics.map((t, i) => (
+                            <button
+                              key={i}
+                              onClick={() => setTopic(t)}
+                              className="text-xs text-warm-600 bg-warm-50 hover:bg-warm-100 active:bg-warm-200 border border-warm-200 hover:border-warm-300 rounded-lg px-2.5 py-1.5 transition-colors text-left max-w-full"
+                            >
+                              {t}
+                            </button>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-[11px] text-warm-400 italic">
+                          Tu as fait le tour de toutes les idées ✨{' '}
                           <button
-                            key={i}
-                            onClick={() => setTopic(t)}
-                            className="text-xs text-warm-600 bg-warm-50 hover:bg-warm-100 active:bg-warm-200 border border-warm-200 hover:border-warm-300 rounded-lg px-2.5 py-1.5 transition-colors text-left max-w-full"
+                            onClick={() => { saveUsedTopics([]); setUsedTopics([]); setQuickTopics(pickFreshTopics(6, [])) }}
+                            className="not-italic text-sage-600 hover:text-sage-700 font-medium underline"
                           >
-                            {t}
+                            tout réafficher
                           </button>
-                        ))}
-                      </div>
+                        </p>
+                      )}
                     </div>
 
                     <div className="flex gap-2 pt-2">
