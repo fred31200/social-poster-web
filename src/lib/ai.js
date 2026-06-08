@@ -157,7 +157,7 @@ export async function* streamGenerate({ topic, platform, mode = 'generate', curr
   }
 
   const stream = await client.messages.stream({
-    model: 'claude-opus-4-8',
+    model: 'claude-sonnet-4-6',
     max_tokens: 2000,
     cache_control: { type: 'ephemeral' }, // cache le system prompt (frozen prefix)
     system: SYSTEM_PROMPT,
@@ -199,7 +199,7 @@ export async function* streamReplies({ comment, platform, context, author, apiKe
   userMessage += "Rédige 3 versions de réponse différentes, séparées par \"---\" sur sa propre ligne."
 
   const stream = await client.messages.stream({
-    model: 'claude-opus-4-8',
+    model: 'claude-sonnet-4-6',
     max_tokens: 1500,
     cache_control: { type: 'ephemeral' }, // cache le system prompt
     system: REPLY_SYSTEM_PROMPT,
