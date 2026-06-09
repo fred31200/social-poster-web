@@ -29,6 +29,8 @@ const DEFAULT_CONFIG = {
   tiktok_client_secret: '',
   pinterest_app_id:    '',
   pinterest_app_secret: '',
+  google_client_id:     '',
+  google_client_secret: '',
   gemini_api_key:      '',
 }
 
@@ -57,6 +59,8 @@ export function getConfig() {
     tiktok_client_secret:   process.env.TIKTOK_CLIENT_SECRET   || fromFile.tiktok_client_secret   || '',
     pinterest_app_id:       process.env.PINTEREST_APP_ID       || fromFile.pinterest_app_id       || '',
     pinterest_app_secret:   process.env.PINTEREST_APP_SECRET   || fromFile.pinterest_app_secret   || '',
+    google_client_id:       process.env.GOOGLE_CLIENT_ID       || fromFile.google_client_id       || '',
+    google_client_secret:   process.env.GOOGLE_CLIENT_SECRET   || fromFile.google_client_secret   || '',
     gemini_api_key:         process.env.GEMINI_API_KEY         || fromFile.gemini_api_key         || '',
   }
 }

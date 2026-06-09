@@ -7,6 +7,7 @@ import { buildThreadsOAuthURL } from '@/lib/social/threads'
 import { buildTikTokOAuthURL } from '@/lib/social/tiktok'
 import { buildPinterestOAuthURL } from '@/lib/social/pinterest'
 import { buildMastodonOAuthURL, registerMastodonApp } from '@/lib/social/mastodon'
+import { buildGoogleOAuthURL } from '@/lib/social/google'
 import { getMastodonAppCache, setMastodonAppCache, setMastodonOAuthSession } from '@/lib/store'
 import { v4 as uuidv4 } from 'uuid'
 
@@ -23,6 +24,9 @@ export async function POST(req) {
   if (platform === 'meta' || platform === 'instagram') {
     if (!config.meta_app_id) return NextResponse.json({ error: 'Meta App ID manquant' }, { status: 400 })
     url = buildMetaOAuthURL({ clientId: config.meta_app_id, redirectUri, state: `${platform}:${userId}` })
+  } else if (platform === 'google') {
+    if (!config.google_client_id) return NextResponse.json({ error: 'Google Client ID manquant (GOOGLE_CLIENT_ID)' }, { status: 400 })
+    url = buildGoogleOAuthURL({ clientId: config.google_client_id, redirectUri, state: `google:${userId}` })
   } else if (platform === 'linkedin') {
     if (!config.linkedin_client_id) return NextResponse.json({ error: 'LinkedIn Client ID manquant' }, { status: 400 })
     url = buildLinkedInOAuthURL({ clientId: config.linkedin_client_id, redirectUri, state: `linkedin:${userId}` })

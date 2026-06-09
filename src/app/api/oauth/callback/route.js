@@ -10,6 +10,7 @@ import { exchangeThreadsCode, getThreadsUserInfo } from '@/lib/social/threads'
 import { exchangeTikTokCode, getTikTokUserInfo } from '@/lib/social/tiktok'
 import { exchangePinterestCode, getPinterestProfile } from '@/lib/social/pinterest'
 import { exchangeMastodonCode, getMastodonProfile } from '@/lib/social/mastodon'
+import { exchangeGoogleCode, getGoogleLocation } from '@/lib/social/google'
 import { saveAccount, getMastodonOAuthSession } from '@/lib/store'
 import { stashMetaSession } from '@/lib/oauth-session'
 
@@ -41,6 +42,21 @@ export async function GET(req) {
       const filteredPages = platform === 'instagram' ? pages.filter(p => p.instagram_business_account) : pages
       const sessionId = await stashMetaSession({ token, user, pages: filteredPages, instagramOnly: platform === 'instagram', userId })
       return NextResponse.redirect(`${baseUrl}/?oauth=meta-select&session=${sessionId}`)
+    }
+
+    if (platform === 'google') {
+      const tokens = await exchangeGoogleCode({ code, redirectUri, clientId: config.google_client_id, clientSecret: config.google_client_secret })
+      const loc = await getGoogleLocation(tokens.access_token)
+      await saveAccount(userId, {
+        platform: 'google',
+        platform_user_id: loc.locationName,
+        name: loc.title,
+        access_token: tokens.access_token,
+        refresh_token: tokens.refresh_token || null,
+        page_id: `${loc.accountName}/${loc.locationName}`, // accounts/x/locations/y (chemin v4 localPosts)
+        page_name: loc.title,
+      })
+      return NextResponse.redirect(`${baseUrl}/?oauth=success&platform=google&name=${encodeURIComponent(loc.title)}`)
     }
 
     if (platform === 'linkedin') {

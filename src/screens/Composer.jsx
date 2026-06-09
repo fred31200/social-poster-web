@@ -15,6 +15,7 @@ const IG_FORMATS = [
 const PLATFORMS = [
   { id: 'instagram', label: 'Instagram', emoji: '📸', requiresMedia: true, note: 'Image/vidéo requis' },
   { id: 'facebook', label: 'Facebook', emoji: '📘', requiresMedia: false },
+  { id: 'google', label: 'Google', emoji: '📍', requiresMedia: false, note: 'Fiche établissement' },
   { id: 'linkedin', label: 'LinkedIn', emoji: '💼', requiresMedia: false },
   { id: 'tiktok', label: 'TikTok', emoji: '🎵', requiresMedia: true, note: 'Vidéo/image requis' },
   { id: 'threads', label: 'Threads', emoji: '🧵', requiresMedia: false, note: 'Texte seulement (max 500)' },
@@ -24,7 +25,7 @@ const PLATFORMS = [
   { id: 'mastodon', label: 'Mastodon', emoji: '🐘', requiresMedia: false, note: 'Max 500 car.' },
 ]
 
-const MAX_CHARS = { instagram: 2200, facebook: 63206, linkedin: 3000, tiktok: 150, threads: 500, telegram: 4096, pinterest: 500, bluesky: 300, mastodon: 500 }
+const MAX_CHARS = { instagram: 2200, facebook: 63206, google: 1500, linkedin: 3000, tiktok: 150, threads: 500, telegram: 4096, pinterest: 500, bluesky: 300, mastodon: 500 }
 
 function PreviewModal({ content, platforms, onClose }) {
   const PLATFORM_NAMES = { facebook: 'Facebook', instagram: 'Instagram', linkedin: 'LinkedIn', threads: 'Threads', tiktok: 'TikTok' }

@@ -11,6 +11,7 @@ import { postToTelegram } from './social/telegram'
 import { postToPinterest } from './social/pinterest'
 import { postToBluesky } from './social/bluesky'
 import { postToMastodon } from './social/mastodon'
+import { postToGoogle } from './social/google'
 
 const POSTERS = {
   facebook:  (acc, content, media) => postToFacebook(acc, content, media),
@@ -22,6 +23,7 @@ const POSTERS = {
   pinterest: (acc, content, media) => postToPinterest(acc, content, media),
   bluesky:   (acc, content, media) => postToBluesky(acc, content, media),
   mastodon:  (acc, content, media) => postToMastodon(acc, content, media),
+  google:    (acc, content, media) => postToGoogle(acc, content, media),
 }
 
 export async function publishPost(userId, post) {

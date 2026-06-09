@@ -91,6 +91,19 @@ const PLATFORMS = [
     ],
   },
   {
+    id: 'google', label: 'Fiche Google (My Business)', emoji: '📍',
+    description: 'Publie tes actualités sur ta fiche d\'établissement Google (Maps & Recherche).',
+    color: 'from-blue-500 to-green-600',
+    configKeys: ['google_client_id', 'google_client_secret'],
+    setupUrl: 'https://console.cloud.google.com',
+    setupSteps: [
+      'Configuration Google Cloud déjà faite (projet Social Poster Aux Graines) ✓',
+      'Demande d\'accès API envoyée à Google (n° 5-3356000041612, 7-10 jours ouvrés)',
+      'Après l\'email d\'approbation : activer l\'API "Google My Business API" dans la console, puis connecter ici',
+      'Connecte-toi avec le compte propriétaire de la fiche (lesmassagesdefred@gmail.com)',
+    ],
+  },
+  {
     id: 'mastodon', label: 'Mastodon', emoji: '🐘',
     description: 'Publie sur n\'importe quelle instance Mastodon.',
     color: 'from-purple-600 to-purple-900',
