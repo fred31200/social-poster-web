@@ -20,6 +20,7 @@ const PUBLIC_PATHS = [
   '/terms',
   '/privacy',
   '/tiktoknkkriyD9GgivVDmOSp8emTjECayjYOck.txt', // vérification de propriété TikTok
+  '/app-icon.png', // icône publique de l'application (formulaires développeurs)
 
   '/api/auth/login',
   '/api/auth/setup',
