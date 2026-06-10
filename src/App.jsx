@@ -7,6 +7,7 @@ import Composer from './screens/Composer'
 import Accounts from './screens/Accounts'
 import Calendar from './screens/Calendar'
 import History from './screens/History'
+import Analytics from './screens/Analytics'
 import Replies from './screens/Replies'
 import Inbox from './screens/Inbox'
 import Invitations from './screens/Invitations'
@@ -142,6 +143,7 @@ export default function App() {
           {page === 'accounts'     && <Accounts {...pageProps} />}
           {page === 'queue'        && <Calendar {...pageProps} />}
           {page === 'history'      && <History {...pageProps} />}
+          {page === 'analytics'    && <Analytics {...pageProps} />}
           {page === 'replies'      && <Replies {...pageProps} />}
           {page === 'inbox'        && <Inbox {...pageProps} />}
           {page === 'invitations'  && <Invitations addToast={addToast} />}
