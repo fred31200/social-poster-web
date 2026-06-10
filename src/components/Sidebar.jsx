@@ -1,5 +1,5 @@
 'use client'
-import { PenSquare, Users, Clock, History, Leaf, LogOut, MessageSquareReply, Inbox, Shield, Settings, BarChart2, ScrollText, Moon, Sun } from 'lucide-react'
+import { PenSquare, Users, Clock, History, Leaf, LogOut, MessageSquareReply, Inbox, Shield, Settings, BarChart2, ScrollText, Moon, Sun, Smartphone } from 'lucide-react'
 
 async function handleLogout() {
   await fetch('/api/auth/logout', { method: 'POST' })
@@ -21,6 +21,7 @@ const PLATFORM_ICONS = {
 
 const NAV = [
   { id: 'composer', label: 'Composer', icon: PenSquare },
+  { id: 'stories', label: 'Stories', icon: Smartphone },
   { id: 'inbox', label: 'Inbox', icon: Inbox },
   { id: 'replies', label: 'Réponses (paste)', icon: MessageSquareReply },
   { id: 'queue', label: 'Calendrier', icon: Clock },

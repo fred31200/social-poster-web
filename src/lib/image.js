@@ -10,6 +10,7 @@ const TARGETS = {
   'portrait':   { w: 1080, h: 1350, fit: 'cover' },
   'landscape':  { w: 1080, h: 566,  fit: 'cover' },
   'fit-square': { w: 1080, h: 1080, fit: 'contain' },
+  'story':      { w: 1080, h: 1920, fit: 'cover' }, // format Story Instagram 9:16
 }
 
 /**

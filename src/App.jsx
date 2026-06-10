@@ -4,6 +4,7 @@ import Sidebar from './components/Sidebar'
 import MobileHeader from './components/MobileHeader'
 import MobileDrawer from './components/MobileDrawer'
 import Composer from './screens/Composer'
+import Stories from './screens/Stories'
 import Accounts from './screens/Accounts'
 import Calendar from './screens/Calendar'
 import History from './screens/History'
@@ -140,6 +141,7 @@ export default function App() {
 
         <div className="flex-1 overflow-y-auto" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
           {page === 'composer'     && <Composer {...pageProps} />}
+          {page === 'stories'      && <Stories {...pageProps} />}
           {page === 'accounts'     && <Accounts {...pageProps} />}
           {page === 'queue'        && <Calendar {...pageProps} />}
           {page === 'history'      && <History {...pageProps} />}
