@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { requireAuth } from '@/lib/auth'
+import { requireAuth, createSessionToken, setAuthCookie } from '@/lib/auth'
 import { getUserById } from '@/lib/store'
 
 export async function GET(req) {
@@ -10,10 +10,14 @@ export async function GET(req) {
   if (user.isActive === false) {
     return NextResponse.json({ error: 'Compte désactivé' }, { status: 403 })
   }
-  return NextResponse.json({
+  const res = NextResponse.json({
     id: user.id,
     email: user.email,
     isAdmin: user.isAdmin,
     aiEnabled: user.aiEnabled,
   })
+  // Renouvellement glissant : chaque ouverture de l'app re-signe un token frais.
+  // Une seule connexion suffit — la session n'expire jamais tant que l'app est utilisée.
+  setAuthCookie(res, createSessionToken(user.id))
+  return res
 }

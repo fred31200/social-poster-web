@@ -18,6 +18,7 @@ export async function pollFacebookComments({ userId, firstRun = false } = {}) {
 
   let scanned = 0, newCount = 0, aiFailed = 0
 
+  const genTasks = []
   for (const account of facebookAccounts) {
     try {
       const comments = await fetchAllPageComments(account, since, 25)
@@ -43,16 +44,22 @@ export async function pollFacebookComments({ userId, firstRun = false } = {}) {
 
         if (insertedId) {
           newCount++
-          generateAndStoreReplies(userId, insertedId, c.message, 'facebook', c.from?.name).catch(e => {
-            console.error('[inbox] AI gen failed for', insertedId, e?.message)
-            aiFailed++
-          })
+          genTasks.push(
+            generateAndStoreReplies(userId, insertedId, c.message, 'facebook', c.from?.name).catch(e => {
+              console.error('[inbox] AI gen failed for', insertedId, e?.message)
+              aiFailed++
+            })
+          )
         }
       }
     } catch (err) {
       console.error('[inbox] poll error for account', account.id, err?.response?.data || err?.message)
     }
   }
+
+  // Attendre les générations (lancées en PARALLÈLE) avant de répondre : sur Vercel,
+  // une promesse non attendue est tuée à la fin de la requête → réponses jamais stockées.
+  await Promise.all(genTasks)
 
   await setInboxLastPolledAt(userId, Math.floor(Date.now() / 1000))
   return { scanned, new_comments: newCount, ai_failed: aiFailed }

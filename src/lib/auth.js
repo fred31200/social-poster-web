@@ -16,7 +16,7 @@ import { NextResponse } from 'next/server'
 
 const COOKIE_NAME = 'sp_auth'
 export const AUTH_COOKIE_NAME = COOKIE_NAME
-export const AUTH_COOKIE_MAX_AGE = 60 * 60 * 24 * 30 // 30 days
+export const AUTH_COOKIE_MAX_AGE = 60 * 60 * 24 * 365 // 1 an — et renouvelé à chaque visite (voir /api/auth/me)
 
 // ─── Password hashing (scrypt, pure Node.js) ──────────────────────────────
 export function hashPassword(password) {

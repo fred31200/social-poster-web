@@ -196,11 +196,13 @@ export async function* streamReplies({ comment, platform, context, author, apiKe
   if (context && context.trim()) {
     userMessage += `Contexte : ${context.trim()}\n\n`
   }
-  userMessage += "Rédige 3 versions de réponse différentes, séparées par \"---\" sur sa propre ligne."
+  userMessage += "Rédige 3 versions de réponse différentes et COURTES (1 à 3 phrases chacune — une réponse de commentaire, pas un post), séparées par \"---\" sur sa propre ligne."
 
   const stream = await client.messages.stream({
-    model: 'claude-sonnet-4-6',
-    max_tokens: 1500,
+    // Haiku : le modèle rapide — idéal pour des réponses courtes de commentaires
+    // (latence ~2-3x plus faible que Sonnet, et largement assez bon pour 1-3 phrases).
+    model: 'claude-haiku-4-5',
+    max_tokens: 700,
     cache_control: { type: 'ephemeral' }, // cache le system prompt
     system: REPLY_SYSTEM_PROMPT,
     thinking: { type: 'disabled' },
