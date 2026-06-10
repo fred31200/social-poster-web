@@ -1,6 +1,6 @@
 'use client'
 import { useState, useEffect } from 'react'
-import { RotateCcw, RefreshCw, History as HistoryIcon, CheckCircle, XCircle, AlertTriangle, BarChart2, Heart, MessageCircle, Share2, X } from 'lucide-react'
+import { Repeat, RotateCcw, RefreshCw, History as HistoryIcon, CheckCircle, XCircle, AlertTriangle, BarChart2, Heart, MessageCircle, Share2, X } from 'lucide-react'
 import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
 import PlatformBadge from '../components/PlatformBadge'
@@ -120,6 +120,23 @@ export default function History({ addToast }) {
                       </p>
                     </div>
                     <div className="flex items-center gap-2 flex-shrink-0">
+                      {(post.status === 'published' || post.status === 'partial') && (
+                        <button
+                          onClick={async () => {
+                            await fetch(`/api/posts/${post.id}/evergreen`, {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({ on: !post.evergreen }),
+                            })
+                            addToast(post.evergreen ? 'Recyclage désactivé' : 'Recyclage auto activé ♻️ (republié ~toutes les 3 semaines)', 'success')
+                            load()
+                          }}
+                          title={post.evergreen ? 'Recyclage auto activé — cliquer pour arrêter' : 'Recycler automatiquement ce post (~toutes les 3 semaines)'}
+                          className={`p-1.5 rounded-lg transition-colors ${post.evergreen ? 'text-sage-700 bg-sage-100 hover:bg-sage-200' : 'text-warm-400 hover:text-sage-600 hover:bg-sage-50'}`}
+                        >
+                          <Repeat size={14} />
+                        </button>
+                      )}
                       <button
                         onClick={() => {
                           localStorage.setItem('sp_republish', JSON.stringify({ content: post.content || '', platforms: post.platforms || [] }))

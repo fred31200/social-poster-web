@@ -348,6 +348,25 @@ export async function getDuePosts(userId) {
   return db.posts.filter(p => p.status === 'scheduled' && p.scheduled_at && p.scheduled_at <= now)
 }
 
+// Recyclage evergreen : marquer/démarquer un post à republier automatiquement
+export async function setPostEvergreen(userId, id, on) {
+  const db = await loadUserDb(userId)
+  const p = db.posts.find(x => x.id === id)
+  if (!p) return null
+  p.evergreen = !!on
+  await saveUserDb(userId, db)
+  return p
+}
+
+export async function markPostRecycled(userId, id, ts) {
+  const db = await loadUserDb(userId)
+  const p = db.posts.find(x => x.id === id)
+  if (!p) return null
+  p.last_recycled_at = ts
+  await saveUserDb(userId, db)
+  return p
+}
+
 export async function updatePostStatus(userId, id, status) {
   const db = await loadUserDb(userId)
   const p = db.posts.find(x => x.id === id)
