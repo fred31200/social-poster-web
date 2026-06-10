@@ -58,7 +58,7 @@ export default function Analytics({ addToast }) {
         <div className="flex items-start justify-between">
           <div>
             <h2 className="text-xl font-bold text-warm-700 mb-1 flex items-center gap-2">
-              <TrendingUp size={20} className="text-sage-600" /> Statistiques
+              <TrendingUp size={20} className="text-sage-600" /> Performances
             </h2>
             <p className="text-sm text-warm-500">Ce qui fonctionne, en un coup d'œil 🌿</p>
           </div>

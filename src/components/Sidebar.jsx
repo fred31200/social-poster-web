@@ -25,7 +25,7 @@ const NAV = [
   { id: 'replies', label: 'Réponses (paste)', icon: MessageSquareReply },
   { id: 'queue', label: 'Calendrier', icon: Clock },
   { id: 'history', label: 'Historique', icon: History },
-  { id: 'analytics', label: 'Statistiques', icon: BarChart2 },
+  { id: 'analytics', label: 'Performances', icon: BarChart2 },
   { id: 'accounts', label: 'Comptes', icon: Users },
 ]
 
