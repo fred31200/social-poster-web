@@ -1,6 +1,6 @@
 'use client'
 import { useState, useEffect } from 'react'
-import { Save, Eye, EyeOff, Key, Sparkles, Info, Lock } from 'lucide-react'
+import { Save, Eye, EyeOff, Key, Sparkles, Info, Lock, CalendarClock } from 'lucide-react'
 
 export default function UserSettings({ currentUser, addToast }) {
   const [anthropicKey, setAnthropicKey] = useState('')
@@ -14,6 +14,36 @@ export default function UserSettings({ currentUser, addToast }) {
   const [newPwd, setNewPwd] = useState('')
   const [showPwds, setShowPwds] = useState(false)
   const [savingPwd, setSavingPwd] = useState(false)
+
+  // Créneaux de publication (file d'attente façon Buffer)
+  const DAYS = ['Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi']
+  const [slots, setSlots] = useState([])
+  const [savingSlots, setSavingSlots] = useState(false)
+
+  useEffect(() => {
+    fetch('/api/user/settings').then(r => r.json()).then(d => {
+      if (Array.isArray(d.postingSlots)) setSlots(d.postingSlots)
+    }).catch(() => {})
+  }, [])
+
+  function updateSlot(i, patch) {
+    setSlots(slots.map((s, j) => (j === i ? { ...s, ...patch } : s)))
+  }
+
+  async function saveSlots() {
+    setSavingSlots(true)
+    try {
+      const r = await fetch('/api/user/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ postingSlots: slots }),
+      })
+      const d = await r.json()
+      if (d.error) addToast(d.error, 'error')
+      else addToast('Créneaux enregistrés 📅', 'success')
+    } catch (e) { addToast(e.message, 'error') }
+    setSavingSlots(false)
+  }
 
   useEffect(() => {
     fetch('/api/user/settings').then(r => r.json()).then(d => {
@@ -82,6 +112,52 @@ export default function UserSettings({ currentUser, addToast }) {
               : <span className="text-warm-600">IA non activée par l'admin. Entre ta propre clé Anthropic ci-dessous.</span>
             }
           </p>
+        </div>
+
+        {/* Créneaux de publication (file d'attente) */}
+        <div className="bg-cream border border-warm-200 rounded-2xl p-5">
+          <div className="flex items-center gap-2 mb-2">
+            <CalendarClock size={15} className="text-warm-500" />
+            <h3 className="text-sm font-semibold text-warm-700">Mes créneaux de publication</h3>
+          </div>
+          <p className="text-xs text-warm-500 mb-4">
+            Définis tes moments préférés : le bouton « Ajouter à la file » du Composer planifiera chaque post au prochain créneau libre.
+          </p>
+          <div className="space-y-2">
+            {slots.map((s, i) => (
+              <div key={i} className="flex items-center gap-2">
+                <select
+                  value={s.day}
+                  onChange={e => updateSlot(i, { day: Number(e.target.value) })}
+                  className="flex-1 bg-warm-50 border border-warm-200 rounded-lg px-2 py-2 text-sm text-warm-700 outline-none focus:border-sage-500"
+                >
+                  {DAYS.map((d, di) => <option key={di} value={di}>{d}</option>)}
+                </select>
+                <input
+                  type="time"
+                  value={s.time}
+                  onChange={e => updateSlot(i, { time: e.target.value })}
+                  className="bg-warm-50 border border-warm-200 rounded-lg px-2 py-1.5 text-sm text-warm-700 outline-none focus:border-sage-500"
+                />
+                <button onClick={() => setSlots(slots.filter((_, j) => j !== i))} className="text-warm-400 hover:text-[#B07060] p-1" title="Supprimer ce créneau">✕</button>
+              </div>
+            ))}
+            {slots.length === 0 && (
+              <p className="text-xs text-warm-400 italic">Aucun créneau — ajoute par exemple Mardi 18:30 et Dimanche 10:00.</p>
+            )}
+          </div>
+          <div className="flex items-center gap-2 mt-3">
+            <button onClick={() => setSlots([...slots, { day: 2, time: '18:30' }])} className="text-xs text-sage-700 font-medium hover:underline">
+              + Ajouter un créneau
+            </button>
+            <button
+              onClick={saveSlots}
+              disabled={savingSlots}
+              className="ml-auto text-xs font-semibold text-white bg-sage-600 hover:bg-sage-500 rounded-lg px-3 py-1.5 disabled:opacity-50"
+            >
+              {savingSlots ? 'Enregistrement…' : 'Enregistrer les créneaux'}
+            </button>
+          </div>
         </div>
 
         {/* Anthropic key */}

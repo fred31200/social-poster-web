@@ -1,6 +1,6 @@
 'use client'
 import { useState, useEffect } from 'react'
-import { RefreshCw, History as HistoryIcon, CheckCircle, XCircle, AlertTriangle, BarChart2, Heart, MessageCircle, Share2, X } from 'lucide-react'
+import { RotateCcw, RefreshCw, History as HistoryIcon, CheckCircle, XCircle, AlertTriangle, BarChart2, Heart, MessageCircle, Share2, X } from 'lucide-react'
 import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
 import PlatformBadge from '../components/PlatformBadge'
@@ -120,6 +120,16 @@ export default function History({ addToast }) {
                       </p>
                     </div>
                     <div className="flex items-center gap-2 flex-shrink-0">
+                      <button
+                        onClick={() => {
+                          localStorage.setItem('sp_republish', JSON.stringify({ content: post.content || '', platforms: post.platforms || [] }))
+                          window.location.href = '/'
+                        }}
+                        title="Republier ce post (recharge le texte dans le composer)"
+                        className="p-1.5 text-warm-400 hover:text-sage-600 hover:bg-sage-50 rounded-lg transition-colors"
+                      >
+                        <RotateCcw size={14} />
+                      </button>
                       {canSeeStats && (
                         <button onClick={() => setStatsPostId(post.id)} title="Voir les stats"
                           className="p-1.5 text-warm-400 hover:text-sage-600 hover:bg-sage-50 rounded-lg transition-colors">

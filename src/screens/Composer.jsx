@@ -73,6 +73,39 @@ export default function Composer({ accounts, addToast }) {
   const [aiOpen, setAiOpen] = useState(false)
   const [previewOpen, setPreviewOpen] = useState(false)
 
+  // ♻️ Republication (depuis l'Historique) + 📝 restauration du brouillon auto
+  useEffect(() => {
+    try {
+      const re = localStorage.getItem('sp_republish')
+      if (re) {
+        const d = JSON.parse(re)
+        localStorage.removeItem('sp_republish')
+        if (d.content) setContent(d.content)
+        if (Array.isArray(d.platforms) && d.platforms.length) setSelectedPlatforms(d.platforms)
+        addToast('Post rechargé — prêt à republier ♻️', 'success')
+        return
+      }
+      const dr = localStorage.getItem('sp_draft')
+      if (dr) {
+        const d = JSON.parse(dr)
+        if (d.content) {
+          setContent(d.content)
+          if (Array.isArray(d.platforms) && d.platforms.length) setSelectedPlatforms(d.platforms)
+          addToast('Brouillon restauré 📝', 'success')
+        }
+      }
+    } catch {}
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // 📝 Brouillon auto : le texte en cours n'est jamais perdu (par navigateur)
+  useEffect(() => {
+    try {
+      if (content.trim()) localStorage.setItem('sp_draft', JSON.stringify({ content, platforms: selectedPlatforms }))
+      else localStorage.removeItem('sp_draft')
+    } catch {}
+  }, [content, selectedPlatforms])
+
   const connectedPlatforms = [...new Set(accounts.map(a => a.platform))]
 
   const minDateTime = format(addMinutes(new Date(), 5), "yyyy-MM-dd'T'HH:mm")
@@ -192,15 +225,56 @@ export default function Composer({ accounts, addToast }) {
   async function handlePublish() {
     const error = validate()
     if (error) { addToast(error, 'error'); return }
+    const scheduledAtTs = scheduleMode && scheduledAt
+      ? Math.floor(new Date(scheduledAt).getTime() / 1000)
+      : null
+    await doPublish(scheduledAtTs)
+  }
 
+  // « Ajouter à la file » (façon Buffer) : planifie au prochain créneau libre
+  // parmi les créneaux définis dans Réglages → Mes créneaux de publication.
+  async function handleAddToQueue() {
+    const error = validate()
+    if (error) { addToast(error, 'error'); return }
+    try {
+      const s = await fetch('/api/user/settings').then(r => r.json())
+      const slots = Array.isArray(s.postingSlots) ? s.postingSlots : []
+      if (!slots.length) {
+        addToast('Définis d\'abord tes créneaux dans Réglages → « Mes créneaux de publication »', 'warning')
+        return
+      }
+      const scheduled = await fetch('/api/posts/scheduled').then(r => r.json()).catch(() => [])
+      const taken = new Set((Array.isArray(scheduled) ? scheduled : []).map(p => p.scheduled_at || p.scheduledAt).filter(Boolean))
+      const ts = nextFreeSlot(slots, taken)
+      if (!ts) { addToast('Aucun créneau libre trouvé sur les 60 prochains jours', 'error'); return }
+      await doPublish(ts)
+    } catch (err) {
+      addToast(err.message, 'error')
+    }
+  }
+
+  // Prochain créneau libre (heure locale), en évitant les posts déjà planifiés
+  function nextFreeSlot(slots, takenTs) {
+    const now = new Date()
+    for (let d = 0; d < 60; d++) {
+      const day = new Date(now.getFullYear(), now.getMonth(), now.getDate() + d)
+      const daySlots = slots.filter(s => s.day === day.getDay()).sort((a, b) => String(a.time).localeCompare(String(b.time)))
+      for (const slot of daySlots) {
+        const [h, m] = String(slot.time).split(':').map(Number)
+        if (isNaN(h)) continue
+        const cand = new Date(day.getFullYear(), day.getMonth(), day.getDate(), h, m || 0)
+        const ts = Math.floor(cand.getTime() / 1000)
+        if (cand.getTime() > now.getTime() + 2 * 60 * 1000 && !takenTs.has(ts)) return ts
+      }
+    }
+    return null
+  }
+
+  async function doPublish(scheduledAtTs) {
     setPublishing(true)
     setResults(null)
 
     try {
-      const scheduledAtTs = scheduleMode && scheduledAt
-        ? Math.floor(new Date(scheduledAt).getTime() / 1000)
-        : null
-
       // Upload all files to the server first. If Instagram is selected, also generate
       // the transformed JPEG in the same request (igMode).
       const wantsIg = selectedPlatforms.includes('instagram')
@@ -243,7 +317,7 @@ export default function Composer({ accounts, addToast }) {
           addToast(`${ok} succès, ${fail} échec(s)`, 'warning')
         }
       } else {
-        const dt = new Date(scheduledAt)
+        const dt = new Date(scheduledAtTs * 1000)
         addToast(`Planifié pour le ${format(dt, 'dd/MM à HH:mm', { locale: fr })}`, 'success')
         resetForm()
       }
@@ -258,6 +332,7 @@ export default function Composer({ accounts, addToast }) {
     setSelectedPlatforms([])
     setScheduleMode(false)
     setScheduledAt('')
+    try { localStorage.removeItem('sp_draft') } catch {}
   }
 
   const activeLimit = selectedPlatforms.length > 0
@@ -480,6 +555,17 @@ export default function Composer({ accounts, addToast }) {
               </div>
             ))}
           </div>
+        )}
+
+        {/* Ajouter à la file : prochain créneau libre (façon Buffer) */}
+        {!scheduleMode && (
+          <button
+            onClick={handleAddToQueue}
+            disabled={publishing}
+            className="w-full mb-2 flex items-center justify-center gap-2 py-2.5 rounded-xl font-semibold text-sm text-sage-700 bg-sage-100 hover:bg-sage-200 active:bg-sage-300 border border-sage-300 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+          >
+            <CalendarClock size={15} /> Ajouter à la file (prochain créneau)
+          </button>
         )}
 
         {/* Publish button */}
