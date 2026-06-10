@@ -3,13 +3,14 @@
  */
 
 import { getAccountsByPlatform, upsertComment, getInboxLastPolledAt, setInboxLastPolledAt, updateComment, getComment } from './store'
-import { fetchAllPageComments, postCommentReply } from './social/meta'
+import { fetchAllPageComments, postCommentReply, fetchAllInstagramComments, postInstagramCommentReply } from './social/meta'
 import { streamReplies } from './ai'
 
 export async function pollFacebookComments({ userId, firstRun = false } = {}) {
   const facebookAccounts = await getAccountsByPlatform(userId, 'facebook')
-  if (facebookAccounts.length === 0) {
-    return { scanned: 0, new_comments: 0, ai_failed: 0, error: 'Aucun compte Facebook connecté' }
+  const instagramAccounts = await getAccountsByPlatform(userId, 'instagram')
+  if (facebookAccounts.length === 0 && instagramAccounts.length === 0) {
+    return { scanned: 0, new_comments: 0, ai_failed: 0, error: 'Aucun compte Facebook ou Instagram connecté' }
   }
 
   const last = await getInboxLastPolledAt(userId)
@@ -50,6 +51,35 @@ export async function pollFacebookComments({ userId, firstRun = false } = {}) {
     }
   }
 
+  // Commentaires Instagram — même Inbox, mêmes réponses IA à la demande
+  for (const account of instagramAccounts) {
+    try {
+      const comments = await fetchAllInstagramComments(account, since, 25)
+      scanned += comments.length
+      for (const c of comments) {
+        const insertedId = await upsertComment(userId, {
+          external_id: c.id,
+          account_id: account.id,
+          platform: 'instagram',
+          page_id: account.instagram_account_id || account.page_id,
+          page_name: account.page_name || account.name,
+          post_id: c.post_id,
+          post_message: c.post_message || '',
+          post_url: c.post_url,
+          author_id: c.from?.id || null,
+          author_name: c.from?.name || 'Anonyme',
+          author_picture: null,
+          message: c.message || '',
+          fb_created_time: c.created_time,
+          fb_created_at: Math.floor(new Date(c.created_time).getTime() / 1000),
+        })
+        if (insertedId) newCount++
+      }
+    } catch (err) {
+      console.error('[inbox] poll IG error for account', account.id, err?.response?.data || err?.message)
+    }
+  }
+
   await setInboxLastPolledAt(userId, Math.floor(Date.now() / 1000))
   return { scanned, new_comments: newCount, ai_failed: aiFailed }
 }
@@ -77,6 +107,8 @@ export async function sendReply(userId, commentInternalId, replyText) {
     let sentReplyId
     if (comment.platform === 'facebook') {
       sentReplyId = await postCommentReply(account, comment.external_id, replyText)
+    } else if (comment.platform === 'instagram') {
+      sentReplyId = await postInstagramCommentReply(account, comment.external_id, replyText)
     } else {
       return { error: `Plateforme ${comment.platform} non encore supportée pour l'envoi auto` }
     }

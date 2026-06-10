@@ -176,6 +176,48 @@ export async function postCommentReply(account, commentId, message) {
   return r.data.id
 }
 
+// ─── Inbox : commentaires Instagram ────────────────────────────────────────
+export async function fetchAllInstagramComments(account, sinceUnix = null, maxPosts = 25) {
+  const { access_token: token, instagram_account_id: igId } = account
+  if (!igId) return []
+  const media = await axios.get(`${META_API}/${igId}/media`, {
+    params: { fields: 'id,caption,permalink,timestamp', limit: maxPosts, access_token: token },
+  })
+  const allComments = []
+  await Promise.all((media.data.data || []).map(async (m) => {
+    try {
+      const r = await axios.get(`${META_API}/${m.id}/comments`, {
+        params: { fields: 'id,text,username,timestamp,from{id,username}', limit: 50, access_token: token },
+      })
+      for (const c of (r.data.data || [])) {
+        if (c.from?.id === igId) continue // nos propres commentaires/réponses
+        const ts = Math.floor(new Date(c.timestamp).getTime() / 1000)
+        if (sinceUnix && ts <= sinceUnix) continue
+        allComments.push({
+          id: c.id,
+          message: c.text || '',
+          created_time: c.timestamp,
+          from: { id: c.from?.id || null, name: c.username || c.from?.username || 'Anonyme' },
+          post_id: m.id,
+          post_message: m.caption || '',
+          post_url: m.permalink,
+        })
+      }
+    } catch (e) {
+      console.error('[ig comments]', m.id, e?.response?.data || e?.message)
+    }
+  }))
+  return allComments
+}
+
+/** Répond à un commentaire Instagram (POST /{ig-comment-id}/replies). */
+export async function postInstagramCommentReply(account, commentId, message) {
+  const r = await axios.post(`${META_API}/${commentId}/replies`, {
+    message, access_token: account.access_token,
+  })
+  return r.data.id
+}
+
 // ─── Posting: Instagram ─────────────────────────────────────────────────────
 export async function postToInstagram(account, content, mediaPaths = []) {
   const { access_token: token, instagram_account_id: igId } = account
