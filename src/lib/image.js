@@ -32,11 +32,30 @@ export async function transformForInstagram(buffer, mode = 'square', bgColor = '
  * que les gros PNG renvoyés par Gemini, ~2 Mo → quelques centaines de Ko).
  */
 export async function compressJpeg(buffer, maxDim = 1280, quality = 88) {
-  return sharp(buffer)
+  const resized = await sharp(buffer)
     .rotate()
     .resize({ width: maxDim, height: maxDim, fit: 'inside', withoutEnlargement: true })
-    .jpeg({ quality, mozjpeg: true })
     .toBuffer()
+
+  // Filigrane « Aux Graines du Bien-Être » en bas à droite — seules les images
+  // GÉNÉRÉES PAR L'IA passent par cette fonction (pas les photos uploadées).
+  // À remplacer par le logo PNG de Frédéric quand il le fournira.
+  try {
+    const { width = maxDim, height = maxDim } = await sharp(resized).metadata()
+    const fontSize = Math.max(16, Math.round(width * 0.026))
+    const pad = Math.round(fontSize * 0.8)
+    const svg = Buffer.from(
+      `<svg width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg">` +
+      `<text x="${width - pad}" y="${height - pad}" text-anchor="end" ` +
+      `font-family="Georgia, serif" font-style="italic" font-size="${fontSize}" ` +
+      `fill="#ffffff" fill-opacity="0.78" stroke="#000000" stroke-opacity="0.22" stroke-width="0.8">` +
+      `Aux Graines du Bien-Être</text></svg>`
+    )
+    return await sharp(resized).composite([{ input: svg }]).jpeg({ quality, mozjpeg: true }).toBuffer()
+  } catch {
+    // Si le rendu du filigrane échoue (police indisponible…), on renvoie l'image telle quelle
+    return sharp(resized).jpeg({ quality, mozjpeg: true }).toBuffer()
+  }
 }
 
 export async function getImageMetadata(buffer) {
