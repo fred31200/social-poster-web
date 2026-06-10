@@ -50,6 +50,39 @@ export default function Analytics({ addToast }) {
   const maxEng = Math.max(1, ...rows.map(r => r.engagement))
   const medals = ['🥇', '🥈', '🥉']
 
+  // 💡 Meilleurs moments : jour + heure des posts qui engagent le plus
+  const DAYS_FR = ['Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi']
+  const buckets = {}
+  rows.forEach(r => {
+    const d = new Date((r.post.created_at || 0) * 1000)
+    const key = `${d.getDay()}-${d.getHours()}`
+    buckets[key] = buckets[key] || { day: d.getDay(), hour: d.getHours(), eng: 0, n: 0 }
+    buckets[key].eng += r.engagement
+    buckets[key].n++
+  })
+  const bestMoments = Object.values(buckets)
+    .map(b => ({ ...b, avg: b.eng / b.n }))
+    .filter(b => b.avg > 0)
+    .sort((a, b) => b.avg - a.avg)
+    .slice(0, 3)
+
+  async function adoptMoments() {
+    try {
+      const s = await fetch('/api/user/settings').then(r => r.json())
+      const merged = Array.isArray(s.postingSlots) ? [...s.postingSlots] : []
+      for (const b of bestMoments) {
+        const slot = { day: b.day, time: `${String(b.hour).padStart(2, '0')}:00` }
+        if (!merged.some(m => m.day === slot.day && m.time === slot.time)) merged.push(slot)
+      }
+      await fetch('/api/user/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ postingSlots: merged }),
+      })
+      addToast('Créneaux ajoutés à ta file d\'attente 📅', 'success')
+    } catch (e) { addToast(e.message, 'error') }
+  }
+
   return (
     <div className="p-4 md:p-6 md:pt-10 pb-24 md:pb-10">
       <div className="max-w-2xl mx-auto space-y-6">
@@ -99,6 +132,23 @@ export default function Analytics({ addToast }) {
               ))}
             </div>
             <p className="text-[11px] text-warm-400 -mt-3 text-center">Sur tes {rows.length} derniers posts publiés</p>
+
+            {/* Meilleurs moments (analyse de TES posts) */}
+            {bestMoments.length > 0 && (
+              <div className="bg-gradient-to-br from-amber-50 to-amber-100 border border-amber-200 rounded-2xl p-5">
+                <h3 className="text-sm font-semibold text-warm-700 mb-1.5">💡 Tes meilleurs moments pour publier</h3>
+                <p className="text-xs text-warm-600 mb-3">
+                  {bestMoments.map(b => `${DAYS_FR[b.day]} vers ${b.hour}h`).join('  ·  ')}
+                  <span className="text-warm-400"> (d'après l'engagement de tes propres posts)</span>
+                </p>
+                <button
+                  onClick={adoptMoments}
+                  className="text-xs font-semibold text-white bg-sage-600 hover:bg-sage-500 rounded-lg px-3 py-1.5 transition-colors"
+                >
+                  ➕ Ajouter à mes créneaux de publication
+                </button>
+              </div>
+            )}
 
             {/* Meilleurs posts */}
             <div className="bg-cream border border-warm-200 rounded-2xl p-5">
