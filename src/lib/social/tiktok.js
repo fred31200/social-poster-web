@@ -53,53 +53,81 @@ export async function getTikTokUserInfo(accessToken) {
 }
 
 // ─── Posting ────────────────────────────────────────────────────────────────
+
+// En prod les médias sont des URLs publiques (catbox) ; en dev, des chemins locaux.
+async function loadMediaBuffer(ref) {
+  if (/^https?:\/\//i.test(ref)) {
+    const r = await axios.get(ref, { responseType: 'arraybuffer', maxContentLength: Infinity })
+    return Buffer.from(r.data)
+  }
+  return fs.readFileSync(ref)
+}
+
 export async function postToTikTok(account, content, mediaPaths = []) {
   const { access_token: token } = account
+  const headers = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json; charset=UTF-8' }
 
   if (mediaPaths.length === 0) {
-    throw new Error('TikTok requiert au moins une vidéo ou une image.')
+    throw new Error('TikTok requiert au moins une vidéo (MP4, MOV ou WebM).')
   }
 
-  const isVideo = /\.(mp4|mov|avi|webm)$/i.test(mediaPaths[0])
-
-  if (isVideo) {
-    // Video upload workflow
-    const fileBuffer = fs.readFileSync(mediaPaths[0])
-    const fileSize = fileBuffer.length
-
-    // Step 1: Initialize upload
-    const initR = await axios.post(`${TIKTOK_API}/post/publish/video/init/`, {
-      post_info: {
-        title: content?.slice(0, 150) || '',
-        privacy_level: 'PUBLIC_TO_EVERYONE',
-        disable_duet: false,
-        disable_stitch: false,
-        disable_comment: false,
-      },
-      source_info: {
-        source: 'FILE_UPLOAD',
-        video_size: fileSize,
-        chunk_size: fileSize,
-        total_chunk_count: 1,
-      },
-    }, { headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json; charset=UTF-8' } })
-
-    const uploadUrl = initR.data.data?.upload_url
-    if (!uploadUrl) throw new Error('TikTok: failed to get upload URL')
-
-    // Step 2: Upload file
-    await axios.put(uploadUrl, fileBuffer, {
-      headers: { 'Content-Type': 'video/mp4', 'Content-Range': `bytes 0-${fileSize - 1}/${fileSize}` }
-    })
-
-    // Step 3: Publish
-    const publishR = await axios.post(`${TIKTOK_API}/post/publish/video/`, {
-      publish_id: initR.data.data.publish_id
-    }, { headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json; charset=UTF-8' } })
-
-    return publishR.data.data?.post_id || 'tiktok_video'
-  } else {
-    // Photo upload — TikTok API requires URL-based image (not direct file upload)
-    throw new Error('TikTok API nécessite une URL d\'image publique. Veuillez utiliser une image depuis une URL.')
+  const ref = mediaPaths[0]
+  const isVideo = /\.(mp4|mov|avi|webm)(\?|$)/i.test(ref)
+  if (!isVideo) {
+    throw new Error('TikTok : seules les vidéos sont prises en charge pour le moment (MP4, MOV, WebM).')
   }
+
+  // Niveau de confidentialité réellement autorisé pour ce créateur.
+  // Tant que l'app n'est pas validée par TikTok, seul SELF_ONLY (privé) est accepté.
+  let privacyLevel = 'SELF_ONLY'
+  try {
+    const ci = await axios.post(`${TIKTOK_API}/post/publish/creator_info/query/`, {}, { headers })
+    const options = ci.data?.data?.privacy_level_options || []
+    if (options.includes('PUBLIC_TO_EVERYONE')) privacyLevel = 'PUBLIC_TO_EVERYONE'
+    else if (options.length) privacyLevel = options[0]
+  } catch { /* SELF_ONLY par défaut */ }
+
+  const fileBuffer = await loadMediaBuffer(ref)
+  const fileSize = fileBuffer.length
+
+  // Step 1: init direct post
+  const initR = await axios.post(`${TIKTOK_API}/post/publish/video/init/`, {
+    post_info: {
+      title: content?.slice(0, 150) || '',
+      privacy_level: privacyLevel,
+      disable_duet: false,
+      disable_stitch: false,
+      disable_comment: false,
+    },
+    source_info: {
+      source: 'FILE_UPLOAD',
+      video_size: fileSize,
+      chunk_size: fileSize,
+      total_chunk_count: 1,
+    },
+  }, { headers })
+
+  const { upload_url: uploadUrl, publish_id: publishId } = initR.data?.data || {}
+  if (!uploadUrl || !publishId) {
+    throw new Error(`TikTok init : ${initR.data?.error?.message || 'réponse inattendue'}`)
+  }
+
+  // Step 2: upload du fichier
+  await axios.put(uploadUrl, fileBuffer, {
+    headers: { 'Content-Type': 'video/mp4', 'Content-Range': `bytes 0-${fileSize - 1}/${fileSize}` },
+    maxBodyLength: Infinity,
+  })
+
+  // Step 3: TikTok traite puis publie automatiquement — on confirme via le statut
+  for (let i = 0; i < 8; i++) {
+    await new Promise(r => setTimeout(r, 3000))
+    const st = await axios.post(`${TIKTOK_API}/post/publish/status/fetch/`, { publish_id: publishId }, { headers })
+    const status = st.data?.data?.status
+    if (status === 'PUBLISH_COMPLETE') return publishId
+    if (status === 'FAILED') {
+      throw new Error(`TikTok : publication échouée (${st.data?.data?.fail_reason || 'raison inconnue'})`)
+    }
+  }
+  // Toujours en traitement côté TikTok après ~25 s : la vidéo apparaîtra d'ici peu
+  return publishId
 }

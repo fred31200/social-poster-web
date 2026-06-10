@@ -4,6 +4,9 @@ import { createPost, getPosts, updatePostStatus, getPostResults, checkMonthlyQuo
 import { publishPost } from '@/lib/publisher'
 import { logAudit } from '@/lib/audit'
 
+// L'upload vidéo TikTok + la confirmation de publication peuvent dépasser les 10 s par défaut
+export const maxDuration = 60
+
 export async function GET(req) {
   const auth = await requireUser(req)
   if (auth instanceof NextResponse) return auth

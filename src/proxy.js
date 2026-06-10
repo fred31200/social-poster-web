@@ -17,6 +17,10 @@ const PUBLIC_PATHS = [
   '/signup',
   '/forgot-password',
   '/reset-password',
+  '/terms',
+  '/privacy',
+  '/tiktoknkkriyD9GgivVDmOSp8emTjECayjYOck.txt', // vérification de propriété TikTok
+
   '/api/auth/login',
   '/api/auth/setup',
   '/api/auth/signup',
