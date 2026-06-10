@@ -11,6 +11,9 @@ export async function GET(req) {
     hasOwnKey: !!user.anthropicKey,
     aiEnabled: user.aiEnabled,
     postingSlots: Array.isArray(user.postingSlots) ? user.postingSlots : [],
+    signature: user.signature || '',
+    voiceProfile: user.voiceProfile || null,
+    voiceSurveyDone: !!user.voiceSurveyDone,
   })
 }
 
@@ -18,8 +21,22 @@ export async function POST(req) {
   const auth = await requireUser(req)
   if (auth instanceof NextResponse) return auth
   try {
-    const { anthropicKey, postingSlots } = await req.json()
+    const { anthropicKey, postingSlots, signature, voiceProfile, voiceSurveyDone } = await req.json()
     const patch = {}
+    if (typeof signature === 'string') patch.signature = signature.slice(0, 300)
+    if (typeof voiceSurveyDone === 'boolean') patch.voiceSurveyDone = voiceSurveyDone
+    if (voiceProfile && typeof voiceProfile === 'object') {
+      // Enquête de style : champs texte whitelisted et bornés
+      const pick = (v, max) => (typeof v === 'string' ? v.slice(0, max) : '')
+      patch.voiceProfile = {
+        activity: pick(voiceProfile.activity, 200),
+        tone: pick(voiceProfile.tone, 200),
+        address: voiceProfile.address === 'vous' ? 'vous' : 'tu',
+        emojis: ['aucun', 'peu', 'beaucoup'].includes(voiceProfile.emojis) ? voiceProfile.emojis : 'peu',
+        themes: pick(voiceProfile.themes, 300),
+        sample: pick(voiceProfile.sample, 2000),
+      }
+    }
     if (Array.isArray(postingSlots)) {
       // Créneaux de publication : [{ day: 0-6, time: 'HH:MM' }]
       patch.postingSlots = postingSlots

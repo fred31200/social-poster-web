@@ -114,7 +114,40 @@ function getClient(userApiKey) {
  * @param {string} [opts.currentText] - texte actuel à reformuler (utilisé en mode variations/shorter/etc.)
  * @returns {AsyncIterable<string>} - chunks de texte streamés
  */
-export async function* streamGenerate({ topic, platform, mode = 'generate', currentText, imageBase64, mimeType, apiKey }) {
+/**
+ * Construit un system prompt personnalisé à partir de l'enquête de style d'un
+ * utilisateur invité (voiceProfile). Sans profil → voix générique chaleureuse.
+ * La voix de Frédéric (SYSTEM_PROMPT) reste réservée à son compte.
+ */
+function buildVoiceSystemPrompt(p = {}) {
+  const address = p.address === 'vous' ? 'VOUVOIEMENT (vous)' : 'TUTOIEMENT chaleureux (tu)'
+  const emojis = p.emojis === 'aucun' ? 'AUCUN emoji'
+    : p.emojis === 'beaucoup' ? 'plusieurs emojis bien choisis (3 à 5)'
+    : '1 à 3 emojis bien placés'
+  return `Tu écris les publications réseaux sociaux de ${p.activity || "un(e) professionnel(le) du bien-être"}. Tu écris À LA PREMIÈRE PERSONNE, dans SA voix.
+
+# Sa voix
+- Ton général : ${p.tone || 'chaleureux, authentique et humain'}.
+- ${address}.
+- Emojis : ${emojis}.
+- Thèmes de prédilection : ${p.themes || 'le bien-être au sens large'}.
+${p.sample ? `- Voici un texte écrit par cette personne — imprègne-toi de sa plume (rythme, vocabulaire, énergie) et écris comme elle :\n"""${String(p.sample).slice(0, 1500)}"""` : ''}
+
+# Garde-fous (essentiel)
+- FRANÇAIS CORRECT et soigné, sans faute : ces posts représentent son activité.
+- Pas de langage promo agressif, pas de superlatifs creux, pas de promesses de résultats ou de guérison.
+- Tu élèves, tu n'imposes jamais : pas de leçon de morale.
+
+# Format de sortie
+- Retourne UNIQUEMENT le texte du post à publier (pas de guillemets, pas de préface, pas de méta-commentaire).
+- PAS de hashtags par défaut (demandés séparément).
+- Si on te demande "3 versions" : sépare-les par "---" sur sa propre ligne, chaque version autonome et publiable.
+
+# Adaptations par plateforme
+- Facebook : conversationnel (500-1500 caractères) · Instagram : accroche forte, 200-800 caractères · LinkedIn : plus posé, 800-1800 caractères · Threads : < 500 caractères · Sinon : 400-800 caractères.`
+}
+
+export async function* streamGenerate({ topic, platform, mode = 'generate', currentText, imageBase64, mimeType, apiKey, voice = null, signature = null }) {
   const client = getClient(apiKey)
 
   let userMessage = ''
@@ -149,11 +182,18 @@ export async function* streamGenerate({ topic, platform, mode = 'generate', curr
     ]
   }
 
+  // Signature personnelle : ajoutée à la fin de chaque post généré
+  if (signature && (mode === 'generate' || mode === 'variations')) {
+    const sigNote = `\n\nTermine ${mode === 'variations' ? 'CHAQUE version' : 'le post'} par cette signature EXACTE, telle quelle, sur ses propres lignes :\n${signature}`
+    if (typeof content === 'string') content += sigNote
+    else content[content.length - 1].text += sigNote
+  }
+
   const stream = await client.messages.stream({
     model: 'claude-sonnet-4-6',
     max_tokens: 2000,
     cache_control: { type: 'ephemeral' }, // cache le system prompt (frozen prefix)
-    system: SYSTEM_PROMPT,
+    system: voice ? buildVoiceSystemPrompt(voice) : SYSTEM_PROMPT,
     thinking: { type: 'disabled' }, // pas besoin de thinking pour de la rédaction
     messages: [{ role: 'user', content }],
   })

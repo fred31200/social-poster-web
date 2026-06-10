@@ -17,6 +17,7 @@ import AdminStats from './screens/AdminStats'
 import AdminAudit from './screens/AdminAudit'
 import UserSettings from './screens/UserSettings'
 import Toast from './components/Toast'
+import VoiceSurvey from './components/VoiceSurvey'
 import { api } from './lib/api'
 
 export default function App() {
@@ -153,6 +154,9 @@ export default function App() {
           {page === 'admin-stats'  && <AdminStats addToast={addToast} />}
           {page === 'admin-audit'  && <AdminAudit addToast={addToast} />}
           {page === 'settings'     && <UserSettings currentUser={currentUser} addToast={addToast} />}
+          {currentUser && !currentUser.isAdmin && !currentUser.voiceSurveyDone && (
+            <VoiceSurvey addToast={addToast} onDone={loadCurrentUser} />
+          )}
         </div>
       </main>
 

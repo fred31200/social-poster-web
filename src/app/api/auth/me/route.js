@@ -15,6 +15,7 @@ export async function GET(req) {
     email: user.email,
     isAdmin: user.isAdmin,
     aiEnabled: user.aiEnabled,
+    voiceSurveyDone: !!user.voiceSurveyDone,
   })
   // Renouvellement glissant : chaque ouverture de l'app re-signe un token frais.
   // Une seule connexion suffit — la session n'expire jamais tant que l'app est utilisée.

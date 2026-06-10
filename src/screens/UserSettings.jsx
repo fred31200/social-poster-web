@@ -20,11 +20,38 @@ export default function UserSettings({ currentUser, addToast }) {
   const [slots, setSlots] = useState([])
   const [savingSlots, setSavingSlots] = useState(false)
 
+  // Signature de fin de post
+  const [signature, setSignature] = useState('')
+  const [savingSig, setSavingSig] = useState(false)
+
   useEffect(() => {
     fetch('/api/user/settings').then(r => r.json()).then(d => {
       if (Array.isArray(d.postingSlots)) setSlots(d.postingSlots)
+      if (typeof d.signature === 'string') setSignature(d.signature)
     }).catch(() => {})
   }, [])
+
+  async function saveSignature() {
+    setSavingSig(true)
+    try {
+      const r = await fetch('/api/user/settings', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ signature }),
+      })
+      const d = await r.json()
+      if (d.error) addToast(d.error, 'error')
+      else addToast('Signature enregistrée ✍️', 'success')
+    } catch (e) { addToast(e.message, 'error') }
+    setSavingSig(false)
+  }
+
+  async function redoSurvey() {
+    await fetch('/api/user/settings', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ voiceSurveyDone: false }),
+    })
+    window.location.reload()
+  }
 
   function updateSlot(i, patch) {
     setSlots(slots.map((s, j) => (j === i ? { ...s, ...patch } : s)))
@@ -112,6 +139,34 @@ export default function UserSettings({ currentUser, addToast }) {
               : <span className="text-warm-600">IA non activée par l'admin. Entre ta propre clé Anthropic ci-dessous.</span>
             }
           </p>
+        </div>
+
+        {/* Voix & signature */}
+        <div className="bg-cream border border-warm-200 rounded-2xl p-5">
+          <h3 className="text-sm font-semibold text-warm-700 mb-2">✍️ Ma voix & ma signature</h3>
+          <p className="text-xs text-warm-500 mb-3">
+            Ta signature est ajoutée à la fin de chaque post généré par l'IA (nom, hashtags…).
+          </p>
+          <div className="flex gap-2">
+            <input
+              value={signature}
+              onChange={e => setSignature(e.target.value)}
+              placeholder="ex : 🌿 Frédéric — Aux Graines du Bien-Être  #massageayurvedique"
+              className="flex-1 bg-warm-50 border border-warm-200 rounded-lg px-3 py-2 text-sm text-warm-700 placeholder-warm-400 outline-none focus:border-sage-500"
+            />
+            <button
+              onClick={saveSignature}
+              disabled={savingSig}
+              className="shrink-0 text-xs font-semibold text-white bg-sage-600 hover:bg-sage-500 rounded-lg px-3 disabled:opacity-50"
+            >
+              {savingSig ? 'Enregistrement…' : 'Enregistrer'}
+            </button>
+          </div>
+          {!currentUser?.isAdmin && (
+            <button onClick={redoSurvey} className="mt-3 text-xs text-sage-700 font-medium hover:underline">
+              ✨ Refaire le questionnaire de style (ma voix d'écriture)
+            </button>
+          )}
         </div>
 
         {/* Créneaux de publication (file d'attente) */}

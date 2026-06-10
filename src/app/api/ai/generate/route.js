@@ -8,6 +8,8 @@
  *  - imageBase64 (sans préfixe data:) → Claude "voit" la photo et écrit un post.
  */
 
+import { NextResponse } from 'next/server'
+import { requireUser } from '@/lib/auth'
 import { streamGenerate } from '@/lib/ai'
 
 export const maxDuration = 60
@@ -16,6 +18,17 @@ const json = (body, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } })
 
 export async function POST(req) {
+  const auth = await requireUser(req)
+  if (auth instanceof NextResponse) return auth
+  const { user } = auth
+  // Clé : la sienne (BYOK) sinon la clé serveur si l'IA lui est offerte
+  const apiKey = user.anthropicKey || (user.aiEnabled ? process.env.ANTHROPIC_API_KEY : null) || undefined
+  // Voix : profil d'enquête s'il existe ; sinon admin = voix de Frédéric, invité = voix générique
+  const voice = user.voiceProfile && Object.keys(user.voiceProfile).length
+    ? user.voiceProfile
+    : (user.isAdmin ? null : {})
+  const signature = (user.signature || '').trim() || null
+
   try {
     const body = await req.json()
     const { topic, platform, mode = 'generate', currentText, imageBase64, mimeType } = body
@@ -35,7 +48,7 @@ export async function POST(req) {
     const stream = new ReadableStream({
       async start(controller) {
         try {
-          for await (const chunk of streamGenerate({ topic, platform, mode, currentText, imageBase64, mimeType })) {
+          for await (const chunk of streamGenerate({ topic, platform, mode, currentText, imageBase64, mimeType, apiKey, voice, signature })) {
             controller.enqueue(encoder.encode(`data: ${JSON.stringify({ text: chunk })}\n\n`))
           }
           controller.enqueue(encoder.encode(`data: ${JSON.stringify({ done: true })}\n\n`))
