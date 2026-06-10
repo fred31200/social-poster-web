@@ -710,10 +710,22 @@ export default function AIModal({ open, onClose, onInsert, onAddImage, platform 
                       Résultat
                       {textLoading && <Loader2 size={11} className="animate-spin text-sage-600" />}
                     </label>
-                    <div className="bg-warm-50 border border-warm-200 rounded-xl px-4 py-3 text-[15px] text-warm-700 whitespace-pre-wrap leading-relaxed max-h-72 overflow-y-auto">
-                      {generated}
-                      {textLoading && <span className="inline-block w-1.5 h-4 bg-sage-500 align-middle ml-0.5 animate-pulse" />}
-                    </div>
+                    {textLoading ? (
+                      <div className="bg-warm-50 border border-warm-200 rounded-xl px-4 py-3 text-[15px] text-warm-700 whitespace-pre-wrap leading-relaxed max-h-72 overflow-y-auto">
+                        {generated}
+                        <span className="inline-block w-1.5 h-4 bg-sage-500 align-middle ml-0.5 animate-pulse" />
+                      </div>
+                    ) : (
+                      <>
+                        <textarea
+                          value={generated}
+                          onChange={e => setGenerated(e.target.value)}
+                          rows={Math.min(14, Math.max(6, generated.split('\n').length + 2))}
+                          className="w-full bg-warm-50 border border-warm-200 rounded-xl px-4 py-3 text-[15px] text-warm-700 leading-relaxed outline-none focus:border-sage-500 transition-colors resize-y"
+                        />
+                        <p className="text-[10px] text-warm-400 mt-1">✏️ Tu peux modifier le texte directement ici avant de l'utiliser.</p>
+                      </>
+                    )}
 
                     {!textLoading && (
                       <div className="mt-3">
