@@ -218,6 +218,28 @@ export async function postInstagramCommentReply(account, commentId, message) {
   return r.data.id
 }
 
+// ─── Stories Instagram ──────────────────────────────────────────────────────
+export async function postToInstagramStory(account, content, mediaPaths = []) {
+  const { access_token: token, instagram_account_id: igId } = account
+  if (!igId) throw new Error('Compte Instagram Business non trouvé')
+  if (!mediaPaths.length) throw new Error('Une story nécessite une image ou une vidéo')
+  const path = mediaPaths[0]
+  const publicUrl = isUrl(path) ? path : await uploadToPublicHost(path)
+  const isVideo = /\.(mp4|mov|avi)$/i.test(path)
+  const r = await axios.post(`${META_API}/${igId}/media`, {
+    media_type: 'STORIES',
+    [isVideo ? 'video_url' : 'image_url']: publicUrl,
+    access_token: token,
+  })
+  // Les vidéos demandent un temps de traitement côté Meta avant publication
+  if (isVideo) await new Promise(res => setTimeout(res, 15000))
+  const pub = await axios.post(`${META_API}/${igId}/media_publish`, {
+    creation_id: r.data.id,
+    access_token: token,
+  })
+  return pub.data.id
+}
+
 // ─── Posting: Instagram ─────────────────────────────────────────────────────
 export async function postToInstagram(account, content, mediaPaths = []) {
   const { access_token: token, instagram_account_id: igId } = account

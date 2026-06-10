@@ -3,7 +3,7 @@
  */
 
 import { getAccountsByPlatform, savePostResult, updatePostStatus } from './store'
-import { postToFacebook, postToInstagram } from './social/meta'
+import { postToFacebook, postToInstagram, postToInstagramStory } from './social/meta'
 import { postToLinkedIn } from './social/linkedin'
 import { postToThreads } from './social/threads'
 import { postToTikTok } from './social/tiktok'
@@ -16,6 +16,7 @@ import { postToGoogle } from './social/google'
 const POSTERS = {
   facebook:  (acc, content, media) => postToFacebook(acc, content, media),
   instagram: (acc, content, media, igPaths) => postToInstagram(acc, content, igPaths),
+  instagram_story: (acc, content, media) => postToInstagramStory(acc, content, media),
   linkedin:  (acc, content, media) => postToLinkedIn(acc, content, media),
   threads:   (acc, content, media) => postToThreads(acc, content, media),
   tiktok:    (acc, content, media) => postToTikTok(acc, content, media),
@@ -29,7 +30,9 @@ const POSTERS = {
 export async function publishPost(userId, post) {
   const results = []
   for (const platform of post.platforms) {
-    const accounts = await getAccountsByPlatform(userId, platform)
+    // Les stories Instagram passent par le compte Instagram connecté
+    const accountPlatform = platform === 'instagram_story' ? 'instagram' : platform
+    const accounts = await getAccountsByPlatform(userId, accountPlatform)
     if (!accounts.length) {
       results.push({ platform, status: 'failed', error: 'Aucun compte connecté pour ' + platform })
       continue
