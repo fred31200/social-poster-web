@@ -10,6 +10,7 @@ const MAX_POSTS = 8 // derniers posts analysés (1 appel Graph API par post)
 export default function Analytics({ addToast }) {
   const [loading, setLoading] = useState(true)
   const [rows, setRows] = useState([])
+  const [grid, setGrid] = useState([]) // aperçu grille Instagram
 
   async function load() {
     setLoading(true)
@@ -40,7 +41,10 @@ export default function Analytics({ addToast }) {
     }
   }
 
-  useEffect(() => { load() }, [])
+  useEffect(() => {
+    load()
+    fetch('/api/accounts/instagram/grid').then(r => r.json()).then(d => setGrid(d.media || [])).catch(() => {})
+  }, [])
 
   const totals = rows.reduce(
     (t, r) => ({ likes: t.likes + r.likes, comments: t.comments + r.comments, shares: t.shares + r.shares }),
@@ -204,6 +208,21 @@ export default function Analytics({ addToast }) {
                 Interactions = j'aime + commentaires + partages (Facebook & Instagram ; les autres réseaux ne fournissent pas encore ces chiffres).
               </p>
             </div>
+
+            {/* Aperçu grille Instagram (façon Later) */}
+            {grid.length > 0 && (
+              <div className="bg-cream border border-warm-200 rounded-2xl p-5">
+                <h3 className="text-sm font-semibold text-warm-700 mb-3">🖼️ Ta grille Instagram</h3>
+                <div className="grid grid-cols-3 gap-1.5 rounded-xl overflow-hidden">
+                  {grid.map(m => (
+                    <a key={m.id} href={m.permalink} target="_blank" rel="noreferrer" className="aspect-square block bg-warm-100">
+                      <img src={m.url} alt="" className="w-full h-full object-cover" loading="lazy" />
+                    </a>
+                  ))}
+                </div>
+                <p className="text-[10px] text-warm-400 mt-3">Tes 9 derniers posts Instagram, tels qu'ils apparaissent sur ton profil.</p>
+              </div>
+            )}
           </>
         )}
       </div>
