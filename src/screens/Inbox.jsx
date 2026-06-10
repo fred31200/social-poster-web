@@ -138,11 +138,26 @@ function CommentCard({ comment, onAction, addToast }) {
   const [dismissing, setDismissing] = useState(false)
   const [customReply, setCustomReply] = useState('')
   const [showCustom, setShowCustom] = useState(false)
+  const [generating, setGenerating] = useState(false)
+  const [localReplies, setLocalReplies] = useState(null)
 
   const isReplied = comment.status === 'replied'
   const isDismissed = comment.status === 'dismissed'
   const isPending = comment.status === 'pending'
-  const replies = comment.ai_replies || []
+  const replies = localReplies || comment.ai_replies || []
+
+  async function generateReplies() {
+    setGenerating(true)
+    try {
+      const r = await fetch(`/api/inbox/${comment.id}/generate`, { method: 'POST' })
+      const data = await r.json()
+      if (data.error) addToast(data.error, 'error')
+      else setLocalReplies(data.replies)
+    } catch (err) {
+      addToast(err.message, 'error')
+    }
+    setGenerating(false)
+  }
 
   async function sendReply(text, idx) {
     setSendingIdx(idx)
@@ -257,9 +272,16 @@ function CommentCard({ comment, onAction, addToast }) {
       {isPending && (
         <div className="border-t border-warm-200 bg-cream">
           {replies.length === 0 ? (
-            <div className="px-4 py-4 text-center">
-              <Loader2 size={16} className="animate-spin text-sage-600 mx-auto mb-1.5" />
-              <p className="text-[11px] text-warm-500">L'IA prépare 3 réponses…</p>
+            <div className="px-4 py-3">
+              <button
+                onClick={generateReplies}
+                disabled={generating || dismissing}
+                className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-semibold text-sage-700 bg-sage-100 hover:bg-sage-200 active:bg-sage-300 border border-sage-300 transition-colors disabled:opacity-60"
+              >
+                {generating
+                  ? (<><Loader2 size={14} className="animate-spin" /> L'IA écrit 3 réponses…</>)
+                  : (<><Sparkles size={14} /> Générer 3 réponses</>)}
+              </button>
             </div>
           ) : (
             <>

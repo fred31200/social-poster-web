@@ -18,7 +18,6 @@ export async function pollFacebookComments({ userId, firstRun = false } = {}) {
 
   let scanned = 0, newCount = 0, aiFailed = 0
 
-  const genTasks = []
   for (const account of facebookAccounts) {
     try {
       const comments = await fetchAllPageComments(account, since, 25)
@@ -42,36 +41,27 @@ export async function pollFacebookComments({ userId, firstRun = false } = {}) {
           fb_created_at: Math.floor(new Date(c.created_time).getTime() / 1000),
         })
 
-        if (insertedId) {
-          newCount++
-          genTasks.push(
-            generateAndStoreReplies(userId, insertedId, c.message, 'facebook', c.from?.name).catch(e => {
-              console.error('[inbox] AI gen failed for', insertedId, e?.message)
-              aiFailed++
-            })
-          )
-        }
+        // Pas de génération IA automatique ici : les réponses sont générées À LA
+        // DEMANDE (bouton dans l'Inbox) → le poll reste instantané, zéro lag.
+        if (insertedId) newCount++
       }
     } catch (err) {
       console.error('[inbox] poll error for account', account.id, err?.response?.data || err?.message)
     }
   }
 
-  // Attendre les générations (lancées en PARALLÈLE) avant de répondre : sur Vercel,
-  // une promesse non attendue est tuée à la fin de la requête → réponses jamais stockées.
-  await Promise.all(genTasks)
-
   await setInboxLastPolledAt(userId, Math.floor(Date.now() / 1000))
   return { scanned, new_comments: newCount, ai_failed: aiFailed }
 }
 
-async function generateAndStoreReplies(userId, commentId, message, platform, authorName) {
+export async function generateAndStoreReplies(userId, commentId, message, platform, authorName) {
   let acc = ''
   for await (const chunk of streamReplies({ comment: message, platform, author: authorName })) {
     acc += chunk
   }
   const replies = acc.split(/\n---\n|\n---\s*$/).map(s => s.trim()).filter(Boolean)
   await updateComment(userId, commentId, { ai_replies: replies, ai_generated_at: Math.floor(Date.now() / 1000) })
+  return replies
 }
 
 export async function sendReply(userId, commentInternalId, replyText) {
