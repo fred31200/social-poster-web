@@ -45,7 +45,7 @@ export function getConfig() {
   } catch (e) {
     console.error('[config] file read error (non-fatal):', e?.message)
   }
-  return {
+  const config = {
     ...DEFAULT_CONFIG,
     ...fromFile,
     // Env-var overrides (production-friendly)
@@ -63,6 +63,12 @@ export function getConfig() {
     google_client_secret:   process.env.GOOGLE_CLIENT_SECRET   || fromFile.google_client_secret   || '',
     gemini_api_key:         process.env.GEMINI_API_KEY         || fromFile.gemini_api_key         || '',
   }
+  // Les copier-coller dans Vercel embarquent parfois sauts de ligne ou espaces —
+  // jamais légitimes dans des identifiants : on nettoie tout systématiquement.
+  for (const k of Object.keys(config)) {
+    if (typeof config[k] === 'string') config[k] = config[k].trim()
+  }
+  return config
 }
 
 export function saveConfig(updates) {
