@@ -31,7 +31,7 @@ export async function POST(req) {
 
   try {
     const body = await req.json()
-    const { topic, platform, mode = 'generate', currentText, imageBase64, mimeType } = body
+    const { topic, platform, mode = 'generate', currentText, instruction, imageBase64, mimeType } = body
     const hasImage = !!imageBase64
 
     if ((mode === 'generate' || mode === 'variations')) {
@@ -42,13 +42,16 @@ export async function POST(req) {
     } else if (['shorter', 'longer', 'more-pro', 'with-emojis', 'hashtags', 'adapt'].includes(mode)) {
       if (!currentText?.trim()) return json({ error: 'Aucun texte à transformer' }, 400)
       if (mode === 'adapt' && !platform) return json({ error: 'Choisis une plateforme pour adapter' }, 400)
+    } else if (mode === 'precisions') {
+      if (!currentText?.trim()) return json({ error: 'Aucun texte à préciser' }, 400)
+      if (!instruction?.trim()) return json({ error: 'Écris ce que tu veux préciser ou modifier' }, 400)
     }
 
     const encoder = new TextEncoder()
     const stream = new ReadableStream({
       async start(controller) {
         try {
-          for await (const chunk of streamGenerate({ topic, platform, mode, currentText, imageBase64, mimeType, apiKey, voice, signature })) {
+          for await (const chunk of streamGenerate({ topic, platform, mode, currentText, instruction, imageBase64, mimeType, apiKey, voice, signature })) {
             controller.enqueue(encoder.encode(`data: ${JSON.stringify({ text: chunk })}\n\n`))
           }
           controller.enqueue(encoder.encode(`data: ${JSON.stringify({ done: true })}\n\n`))

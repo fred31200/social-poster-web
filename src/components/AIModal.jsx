@@ -166,6 +166,7 @@ export default function AIModal({ open, onClose, onInsert, onAddImage, platform 
   const [textLoading, setTextLoading] = useState(false)
   const [textError, setTextError] = useState('')
   const [mode, setMode] = useState('generate')
+  const [refineInstruction, setRefineInstruction] = useState('') // consigne libre « apporter des précisions »
   const [usedTopics, setUsedTopics] = useState(() => loadUsedTopics()) // idées déjà utilisées (persistées par navigateur)
   const [quickTopics, setQuickTopics] = useState(() => pickFreshTopics(6, loadUsedTopics())) // 6 idées fraîches (jamais utilisées)
   const [textImage, setTextImage] = useState(null) // { base64, mimeType, preview } — écrire À PARTIR d'une image
@@ -196,6 +197,7 @@ export default function AIModal({ open, onClose, onInsert, onAddImage, platform 
       setGenerated('')
       setTextError('')
       setMode('generate')
+      setRefineInstruction('')
       setUsedTopics(loadUsedTopics())
       setQuickTopics(pickFreshTopics(6, loadUsedTopics()))
       setTextImage(null)
@@ -260,6 +262,7 @@ export default function AIModal({ open, onClose, onInsert, onAddImage, platform 
         platform,
         currentText: customCurrentText ?? baseText,
       }
+      if (m === 'precisions') body.instruction = refineInstruction.trim()
       // Écrire à partir d'une image : seulement pour une (re)génération de post.
       if ((m === 'generate' || m === 'variations') && textImage) {
         body.imageBase64 = textImage.base64
@@ -305,6 +308,7 @@ export default function AIModal({ open, onClose, onInsert, onAddImage, platform 
             if (data.done) {
               setTextLoading(false)
               textAbortRef.current = null
+              if (m === 'precisions') setRefineInstruction('')
               return
             }
           } catch {}
@@ -728,26 +732,53 @@ export default function AIModal({ open, onClose, onInsert, onAddImage, platform 
                     )}
 
                     {!textLoading && (
-                      <div className="mt-3">
-                        <p className="text-[10px] text-warm-400 uppercase tracking-wider font-semibold mb-1.5">Affiner</p>
-                        <div className="flex flex-wrap gap-1.5">
-                          {REFINE_ACTIONS.map(({ id, label, icon: Icon }) => (
+                      <div className="mt-3 space-y-3">
+                        {/* Apporter des précisions — consigne libre */}
+                        <div>
+                          <p className="text-[10px] text-warm-400 uppercase tracking-wider font-semibold mb-1.5">
+                            ✏️ Apporter des précisions
+                          </p>
+                          <div className="flex gap-2">
+                            <input
+                              value={refineInstruction}
+                              onChange={e => setRefineInstruction(e.target.value)}
+                              onKeyDown={e => { if (e.key === 'Enter' && refineInstruction.trim()) runTextGeneration({ mode: 'precisions' }) }}
+                              placeholder="ex : insiste plus sur la détente, ajoute que c'est sur rendez-vous…"
+                              className="flex-1 min-w-0 bg-warm-50 border border-warm-200 rounded-lg px-3 py-2 text-[13px] text-warm-700 placeholder-warm-400 outline-none focus:border-sage-500 transition-colors"
+                            />
                             <button
-                              key={id}
-                              onClick={() => runTextGeneration({ mode: id })}
-                              className="flex items-center gap-1.5 text-xs text-warm-600 bg-cream hover:bg-warm-50 active:bg-warm-100 border border-warm-200 hover:border-warm-300 rounded-lg px-2.5 py-1.5 transition-colors"
+                              onClick={() => runTextGeneration({ mode: 'precisions' })}
+                              disabled={!refineInstruction.trim()}
+                              className="shrink-0 flex items-center gap-1.5 text-xs font-semibold text-white bg-sage-600 hover:bg-sage-500 active:bg-sage-700 disabled:opacity-40 disabled:cursor-not-allowed rounded-lg px-3 transition-colors"
                             >
-                              <Icon size={12} />
-                              {label}
+                              <Wand2 size={13} /> Préciser
                             </button>
-                          ))}
-                          <button
-                            onClick={() => runTextGeneration({ mode: mode === 'variations' ? 'variations' : 'generate' })}
-                            className="flex items-center gap-1.5 text-xs text-sage-700 bg-sage-100 hover:bg-sage-200 active:bg-sage-300 border border-sage-300 rounded-lg px-2.5 py-1.5 transition-colors"
-                          >
-                            <RefreshCw size={12} />
-                            Régénérer
-                          </button>
+                          </div>
+                          <p className="text-[10px] text-warm-400 mt-1">Dis ce que tu veux changer ou ajouter — je réécris le post en gardant ton style.</p>
+                        </div>
+
+                        {/* Affiner — raccourcis d'un clic */}
+                        <div>
+                          <p className="text-[10px] text-warm-400 uppercase tracking-wider font-semibold mb-1.5">Affiner d'un clic</p>
+                          <div className="flex flex-wrap gap-1.5">
+                            {REFINE_ACTIONS.map(({ id, label, icon: Icon }) => (
+                              <button
+                                key={id}
+                                onClick={() => runTextGeneration({ mode: id })}
+                                className="flex items-center gap-1.5 text-xs text-warm-600 bg-cream hover:bg-warm-50 active:bg-warm-100 border border-warm-200 hover:border-warm-300 rounded-lg px-2.5 py-1.5 transition-colors"
+                              >
+                                <Icon size={12} />
+                                {label}
+                              </button>
+                            ))}
+                            <button
+                              onClick={() => runTextGeneration({ mode: mode === 'variations' ? 'variations' : 'generate' })}
+                              className="flex items-center gap-1.5 text-xs text-sage-700 bg-sage-100 hover:bg-sage-200 active:bg-sage-300 border border-sage-300 rounded-lg px-2.5 py-1.5 transition-colors"
+                            >
+                              <RefreshCw size={12} />
+                              Régénérer
+                            </button>
+                          </div>
                         </div>
                       </div>
                     )}

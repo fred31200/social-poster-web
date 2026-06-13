@@ -110,8 +110,9 @@ function getClient(userApiKey) {
  * @param {object} opts
  * @param {string} opts.topic - sur quoi écrire (libre)
  * @param {string} [opts.platform] - 'facebook' | 'instagram' | 'linkedin' | 'threads' | null
- * @param {string} [opts.mode] - 'generate' | 'variations' | 'shorter' | 'longer' | 'more-pro' | 'with-emojis' | 'hashtags'
+ * @param {string} [opts.mode] - 'generate' | 'variations' | 'shorter' | 'longer' | 'more-pro' | 'with-emojis' | 'hashtags' | 'precisions'
  * @param {string} [opts.currentText] - texte actuel à reformuler (utilisé en mode variations/shorter/etc.)
+ * @param {string} [opts.instruction] - consigne libre de l'utilisateur (mode 'precisions')
  * @returns {AsyncIterable<string>} - chunks de texte streamés
  */
 /**
@@ -147,7 +148,7 @@ ${p.sample ? `- Voici un texte écrit par cette personne — imprègne-toi de sa
 - Facebook : conversationnel (500-1500 caractères) · Instagram : accroche forte, 200-800 caractères · LinkedIn : plus posé, 800-1800 caractères · Threads : < 500 caractères · Sinon : 400-800 caractères.`
 }
 
-export async function* streamGenerate({ topic, platform, mode = 'generate', currentText, imageBase64, mimeType, apiKey, voice = null, signature = null }) {
+export async function* streamGenerate({ topic, platform, mode = 'generate', currentText, instruction, imageBase64, mimeType, apiKey, voice = null, signature = null }) {
   const client = getClient(apiKey)
 
   let userMessage = ''
@@ -167,6 +168,8 @@ export async function* streamGenerate({ topic, platform, mode = 'generate', curr
     userMessage = `Génère 8 à 12 hashtags pertinents pour ce post${platform ? ' (' + capitalize(platform) + ')' : ''}. Mélange : 2-3 hashtags larges (#bienetre #massage), 3-4 hashtags ayurvédiques précis, 2-3 hashtags locaux (#lunion #toulouse #occitanie). Retourne UNIQUEMENT la liste, séparés par des espaces.\n\nPost :\n${currentText || topic}`
   } else if (mode === 'adapt') {
     userMessage = `Adapte ce post pour ${capitalize(platform)} en respectant les conventions de cette plateforme (longueur, ton, structure) :\n\n${currentText}`
+  } else if (mode === 'precisions') {
+    userMessage = `Voici un post que j'ai déjà rédigé. Retravaille-le en tenant compte de ma consigne ci-dessous, tout en gardant EXACTEMENT le même ton et la même voix, et en restant publiable tel quel (pas de préface, pas de méta-commentaire).\n\nMa consigne : ${instruction}\n\nPost actuel :\n${currentText}`
   }
 
   // Génération à partir d'une image : Claude "voit" la photo et écrit dans la voix.
